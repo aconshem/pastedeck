@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>PasteDeck settings</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="../assets/shared/ui/pd.css">
+  <style>
+    .wrap { max-width: 680px; margin: 0 auto; padding: 40px 20px 80px; }
+    header.top { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    header.top img { width: 32px; height: 32px; border-radius: 8px; }
+    header.top h1 { font-size: 20px; }
+    .card { margin-bottom: 16px; }
+    .card h2 { font-size: 14px; padding: 14px 16px; border-bottom: 1px solid var(--pd-border); }
+    .item { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--pd-border); }
+    .item:last-child { border-bottom: 0; }
+    .item small { display: block; color: var(--pd-muted); font-size: 12px; }
+    .item .ctl { flex: none; width: 240px; }
+    .item .ctl.auto { width: auto; }
+    .welcome { padding: 14px 16px; margin-bottom: 16px; background: #fff; border: 1px solid #111; border-radius: 10px; }
+    .flags .item { padding: 8px 16px; }
+    code { font-family: var(--pd-mono); font-size: 12px; background: var(--pd-hover); padding: 1px 5px; border-radius: 4px; }
+  </style>
+</head>
+<body class="pd">
+  <div class="wrap">
+    <header class="top"><img src="../assets/shared/icons/icon-48.png" alt=""><div><h1>PasteDeck settings</h1><div class="pd-muted pd-sm" id="ver"></div></div></header>
+    <div id="welcome" class="welcome pd-hidden"><b>PasteDeck is installed.</b> Press <span class="pd-kbd">Ctrl</span> <span class="pd-kbd">Shift</span> <span class="pd-kbd">Space</span> on any page to open the command bar, or click the toolbar icon.</div>
+    <div id="root"></div>
+  </div>
+  <script src="../assets/shared/ui/pd-core.js"></script>
+  <script src="../assets/shared/ui/pd-storage.js"></script>
+  <script src="../assets/shared/ui/pd-domain.js"></script>
+  <script src="../assets/shared/ui/pd-ui.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

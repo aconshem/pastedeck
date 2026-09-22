@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>PasteDeck — Your Browser's Second Memory</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="PasteDeck is a Chrome extension with snippets, desks, candidate sessions, blueprints, reminders and a command bar. Stop copying the same things all day.">
+  <link rel="icon" href="../assets/shared/icons/icon-32.png">
+  <link rel="stylesheet" href="../assets/shared/ui/pd.css">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body class="pd">
+  <header class="nav">
+    <div class="container nav__in">
+      <a class="brand" href="#top"><img src="../assets/shared/icons/icon-48.png" alt="">PasteDeck</a>
+      <nav class="nav__links" aria-label="Main">
+        <a href="#features">Features</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <div class="nav__cta">
+        <a class="pd-btn pd-btn--ghost" href="../login/index.html">Log in</a>
+        <a class="pd-btn pd-btn--primary" href="#install">Install extension</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="container">
+        <h1>Your Browser's Second Memory</h1>
+        <p class="hero__sub">Stop copying the same things all day. <b>One click to capture.</b> <b>One click to paste.</b> Anywhere.</p>
+        <div class="hero__cta">
+          <a class="pd-btn pd-btn--primary pd-btn--lg" href="#install">Install extension</a>
+          <a class="pd-btn pd-btn--lg" href="#features">See what it does</a>
+        </div>
+        <p class="hero__note">Works in Chrome. Your data stays on your device.</p>
+
+        <figure class="demo" aria-label="Product demo" style="margin-inline:0">
+          <span class="demo__label">Demo GIF placeholder: save your recording as website/assets/demo.gif</span>
+          <!-- When demo.gif exists, uncomment: <img src="../assets/demo.gif" alt="PasteDeck command bar filling a WhatsApp reply"> -->
+          <div class="mock" aria-hidden="true">
+            <div class="mock__in"><svg class="pd-i" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><span class="q">sal</span></div>
+            <div class="mock__row sel"><span class="ic"><svg class="pd-i" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg></span><span class="t">Salary reply</span><span class="h">Insert</span></div>
+            <div class="mock__row"><span class="ic"><svg class="pd-i" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg></span><span class="t">Requirements PDF</span><span class="h">Attach</span></div>
+            <div class="mock__row"><span class="ic"><svg class="pd-i" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><span class="t">John Kamau</span><span class="h">Use session</span></div>
+          </div>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section" id="features">
+      <div class="container">
+        <h2>Not just a clipboard manager</h2>
+        <p class="section__lead">PasteDeck keeps everything you retype in a day within reach: replies, client details, files, forms and reminders.</p>
+        <div class="features">
+          <article class="feature"><svg class="pd-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6a3 3 0 1 1 3 3H6a3 3 0 1 1 3-3v12a3 3 0 1 1-3-3h12a3 3 0 1 1-3 3z"/></svg><h3>Command bar</h3><p>Press Ctrl+Shift+Space on any page. Search snippets, files, reminders, desks and sessions, then press Enter to use the result.</p></article>
+          <article class="feature"><svg class="pd-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/></svg><h3>Desks</h3><p>One workspace per kind of work: recruitment, email, visas. PasteDeck switches desks by website, and you can pin one by hand.</p></article>
+          <article class="feature"><svg class="pd-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg><h3>Snippets</h3><p>Insert a saved reply straight into the field you are typing in, or type a short code like ;sal. If no field is focused, it copies instead.</p></article>
+          <article class="feature"><svg class="pd-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><h3>Candidate sessions</h3><p>Keep one person's passport, phone, ID and salary together across WhatsApp Web, Gmail and forms. The session deletes itself when its timer ends.</p></article>
+          <article class="feature"><svg class="pd-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/></svg><h3>Capture blueprints</h3><p>Click a field, name it, repeat. On the next client page of the same website, one click copies every detail into the session.</p></article>
+          <article class="feature"><svg class="pd-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/></svg><h3>Paste blueprints</h3><p>Map a form once. Next time, preview the values and fill the whole form with one click.</p></article>
+          <article class="feature"><svg class="pd-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><h3>File shelf</h3><p>Keep your logo, location and requirements PDF ready. Passport and full-body photos expire with the session.</p></article>
+          <article class="feature"><svg class="pd-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg><h3>Clipboard history</h3><p>Search text, links and images you copied. Pin what you need. Password fields are never recorded.</p></article>
+          <article class="feature"><svg class="pd-i" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg><h3>Tasks and reminders</h3><p>Stop messaging yourself on WhatsApp. Type “Call medical tomorrow 9am” and Chrome reminds you, with snooze and repeats.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2>Teach it once, then stop typing</h2>
+        <div class="flow">
+          <div class="pd-card"><h3>Open a client page</h3><p>Click Create Blueprint, then click the name, passport and phone on the page. Give each one a name.</p></div>
+          <div class="pd-card"><h3>Copy details</h3><p>On the next client, one click pulls every mapped value into a candidate session.</p></div>
+          <div class="pd-card"><h3>Fill anywhere</h3><p>Open the visa website or Google Form, review the preview, and fill it in one click.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="pricing">
+      <div class="container">
+        <h2>Simple pricing</h2>
+        <p class="section__lead">Start free. Pay once when you need files, blueprints and autofill.</p>
+        <div class="plans">
+          <div class="plan">
+            <h3>Free</h3>
+            <div class="plan__price">$0</div>
+            <p class="pd-muted pd-sm">For trying it out.</p>
+            <ul>
+              <li><svg class="pd-i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>5 snippets</li><li><svg class="pd-i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>2 desks</li><li><svg class="pd-i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>2 sessions</li>
+              <li><svg class="pd-i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Command bar, tasks, clipboard history</li>
+              <li class="off"><svg class="pd-i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>File shelf</li><li class="off"><svg class="pd-i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Blueprints and autofill</li>
+            </ul>
+            <a class="pd-btn pd-btn--block" href="#install">Install free</a>
+          </div>
+          <div class="plan">
+            <h3>Free+ Email</h3>
+            <div class="plan__price">$0 <small>with your email</small></div>
+            <p class="pd-muted pd-sm">Add your email to double your snippets.</p>
+            <ul>
+              <li><svg class="pd-i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>10 snippets</li><li><svg class="pd-i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>2 desks</li><li><svg class="pd-i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>2 sessions</li>
+              <li><svg class="pd-i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Everything in Free</li>
+              <li class="off"><svg class="pd-i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>File shelf</li><li class="off"><svg class="pd-i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Blueprints and autofill</li>
+            </ul>
+            <a class="pd-btn pd-btn--block" href="../login/index.html?plan=freeplus">Add your email</a>
+          </div>
+          <div class="plan plan--pro">
+            <h3>Pro Lifetime <span class="pd-badge pd-badge--dark">Best value</span></h3>
+            <div class="plan__price">$49 <small>one time</small></div>
+            <p class="pd-muted pd-sm">For people who repeat the same paperwork all day.</p>
+            <ul>
+              <li><svg class="pd-i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Unlimited snippets</li><li><svg class="pd-i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Unlimited desks and sessions</li>
+              <li><svg class="pd-i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>File shelf</li><li><svg class="pd-i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Capture and paste blueprints</li><li><svg class="pd-i" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Autofill with preview</li>
+            </ul>
+            <a class="pd-btn pd-btn--primary pd-btn--block" href="../login/index.html?plan=pro">Get Pro Lifetime</a>
+          </div>
+        </div>
+        <p class="note">Checkout is not connected yet. Plans are shown for preview.</p>
+      </div>
+    </section>
+
+    <section class="section" id="faq">
+      <div class="container">
+        <h2>Questions</h2>
+        <div class="faq">
+          <details><summary>Is this just a clipboard manager?</summary><p>No. Clipboard history is one feature. PasteDeck also keeps snippets, candidate sessions, blueprints for capturing and filling forms, files and reminders, organised into desks.</p></details>
+          <details><summary>Where is my data stored?</summary><p>On your device, in Chrome's local extension storage. Nothing is uploaded. Cloud sync for teams will be optional and off by default.</p></details>
+          <details><summary>Does it work on WhatsApp Web and Gmail?</summary><p>Yes. Snippets insert into the message box you are typing in. If a site blocks direct insertion, PasteDeck copies the text so you can paste it yourself.</p></details>
+          <details><summary>What is a blueprint?</summary><p>A blueprint is a memory of where things are on a website. You click a field once and name it. PasteDeck stores the location, so on the next page of that site it can read the same fields, or fill the same form.</p></details>
+          <details><summary>Do blueprints use AI?</summary><p>No. They use the page structure you pointed at. That keeps them fast, predictable and private. If a site changes its layout, teach it again.</p></details>
+          <details><summary>What happens when a session expires?</summary><p>You choose 15 minutes, 30 minutes, 1 hour or end of day. When time is up, the session and its files are deleted.</p></details>
+          <details><summary>Can my team share snippets and files?</summary><p>Owners and admins can set company details and share snippets, desks, images and blueprints with staff. Team sync arrives with the cloud release.</p></details>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="install">
+      <div class="container install">
+        <div>
+          <h2>Install PasteDeck</h2>
+          <p class="section__lead">The Chrome Web Store listing is on its way. Until then, load the extension yourself in a minute.</p>
+          <div class="hero__cta"><a class="pd-btn pd-btn--primary pd-btn--lg" href="../login/index.html">Log in</a></div>
+        </div>
+        <ol class="steps">
+          <li><span>Download the PasteDeck folder and unzip it.</span></li>
+          <li><span>Open <code>chrome://extensions</code> and switch on Developer mode.</span></li>
+          <li><span>Click Load unpacked and choose the <code>extension</code> folder.</span></li>
+          <li><span>Press Ctrl+Shift+Space on any page.</span></li>
+        </ol>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer"><div class="container"><span>© PasteDeck</span><span>Your Browser's Second Memory</span></div></footer>
+</body>
+</html>

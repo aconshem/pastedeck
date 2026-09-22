@@ -1,0 +1,67 @@
+{
+  "manifest_version": 3,
+  "name": "PasteDeck — Your Browser's Second Memory",
+  "short_name": "PasteDeck",
+  "version": "0.1.0",
+  "description": "Snippets, Desks, Candidate Sessions, Blueprints, tasks and a command bar. Stop copying the same things all day.",
+  "minimum_chrome_version": "116",
+  "icons": {
+    "16": "assets/shared/icons/icon-16.png",
+    "32": "assets/shared/icons/icon-32.png",
+    "48": "assets/shared/icons/icon-48.png",
+    "128": "assets/shared/icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "PasteDeck",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "assets/shared/icons/icon-16.png",
+      "32": "assets/shared/icons/icon-32.png"
+    }
+  },
+  "side_panel": { "default_path": "sidepanel/sidepanel.html" },
+  "options_ui": { "page": "options/options.html", "open_in_tab": true },
+  "background": { "service_worker": "background/service-worker.js" },
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "tabs",
+    "activeTab",
+    "scripting",
+    "alarms",
+    "notifications",
+    "sidePanel",
+    "contextMenus",
+    "clipboardWrite"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": [
+        "assets/shared/ui/pd-core.js",
+        "assets/shared/ui/pd-storage.js",
+        "assets/shared/ui/pd-domain.js",
+        "content/content.js",
+        "content/commandbar.js",
+        "content/blueprint.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": ["https://pastedeck.com/*", "https://*.pastedeck.com/*", "http://localhost/*", "http://127.0.0.1/*"],
+      "js": ["content/bridge.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "commands": {
+    "open-command-bar": {
+      "suggested_key": { "default": "Ctrl+Shift+Space", "mac": "Command+Shift+Space" },
+      "description": "Open the PasteDeck command bar"
+    },
+    "quick-add-task": {
+      "suggested_key": { "default": "Alt+Shift+T", "mac": "Alt+Shift+T" },
+      "description": "Quick add a task"
+    }
+  }
+}

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Log in · PasteDeck</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="../assets/shared/icons/icon-32.png">
+  <link rel="stylesheet" href="../assets/shared/ui/pd.css">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body class="pd">
+  <main class="auth">
+    <div class="auth__card">
+      <a href="../landing/index.html" class="brand"><img src="../assets/shared/icons/icon-48.png" alt="" width="26" height="26" style="border-radius:7px">PasteDeck</a>
+
+      <section id="view-login">
+        <h1>Log in to PasteDeck</h1>
+        <p class="auth__sub">Manage your account, team and devices. The extension stays simple.</p>
+        <button class="pd-btn pd-btn--lg pd-btn--block" id="google">
+          <svg class="gicon" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+          Continue with Google
+        </button>
+        <div class="auth__or">or</div>
+        <form id="email-form" novalidate>
+          <div class="pd-field"><label class="pd-label" for="email">Email</label><input class="pd-input" id="email" type="email" autocomplete="email" placeholder="you@company.com" required></div>
+          <button class="pd-btn pd-btn--primary pd-btn--lg pd-btn--block" id="send" type="submit">Email me a login link</button>
+          <p class="pd-help" id="err" style="color:var(--pd-danger)" role="alert"></p>
+        </form>
+        <div class="mockbanner">Login is a preview. No email is sent and no account is created.</div>
+      </section>
+
+      <section id="view-sent" hidden>
+        <h1>Check your email</h1>
+        <p class="auth__sub" id="sent-msg"></p>
+        <button class="pd-btn pd-btn--primary pd-btn--lg pd-btn--block" id="open-link">Open the login link (preview)</button>
+        <button class="pd-btn pd-btn--ghost pd-btn--block" id="back" style="margin-top:8px">Use a different email</button>
+      </section>
+
+      <section id="view-done" hidden>
+        <h1>You are logged in</h1>
+        <p class="auth__sub" id="done-msg"></p>
+        <a class="pd-btn pd-btn--primary pd-btn--lg pd-btn--block" id="go" href="../dashboard/index.html">Open dashboard</a>
+        <p class="auth__foot" id="ext-note" hidden>You came from the extension. You can close this tab and return to Chrome.</p>
+      </section>
+    </div>
+  </main>
+  <script src="../assets/auth.js"></script>
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const params = new URLSearchParams(location.search);
+      const next = params.get('next') === 'dashboard' ? '../dashboard/index.html' : '../dashboard/index.html';
+      PDAuth.rememberPlanIntent(params.get('plan'));
+      const show = (id) => ['view-login', 'view-sent', 'view-done'].forEach((v) => ($(v).hidden = v !== id));
+      const done = (s) => {
+        $('done-msg').textContent = 'Signed in as ' + s.email + '.';
+        $('go').href = next;
+        $('ext-note').hidden = params.get('source') !== 'extension';
+        show('view-done');
+      };
+      const existing = PDAuth.session();
+      if (existing && params.get('switch') !== '1') done(existing);
+
+      $('google').onclick = async (e) => {
+        e.target.disabled = true;
+        try { done(await PDAuth.signInWithGoogle()); } catch (err) { $('err').textContent = err.message; } finally { e.target.disabled = false; }
+      };
+      let pending = null;
+      $('email-form').onsubmit = async (e) => {
+        e.preventDefault(); $('err').textContent = ''; $('send').disabled = true;
+        try {
+          pending = await PDAuth.sendMagicLink($('email').value);
+          $('sent-msg').textContent = 'We would send a link to ' + pending.email + '. In this preview, use the button below to open it.';
+          show('view-sent');
+        } catch (err) { $('err').textContent = err.message; } finally { $('send').disabled = false; }
+      };
+      $('open-link').onclick = async () => { try { done(await PDAuth.verifyMagicLink(pending.devToken)); } catch (err) { $('sent-msg').textContent = err.message; } };
+      $('back').onclick = () => show('view-login');
+    })();
+  </script>
+</body>
+</html>
