@@ -1,5 +1,5 @@
 /*
- * PasteDeck domain layer — all business rules live here, on top of PD.db.
+ * PasteBoard domain layer — all business rules live here, on top of PD.db.
  * Both the extension and the website dashboard use these services, so behaviour stays identical.
  */
 (function (g) {
@@ -34,7 +34,7 @@
 
   /* ---------------- plan & limits ---------------- */
   PD.plan = {
-    id() { return db.get('settings').plan || PD.CONFIG.defaultPlan; },
+    id() { const p = db.get('settings').plan || PD.CONFIG.defaultPlan; return PD.PLAN_ALIASES[p] || p; },
     info() { return PD.PLANS[this.id()] || PD.PLANS.free; },
     can(feature) { return !!this.info()[feature]; },
     count(kind) { return kind === 'sessions' ? PD.sessions.live().length : (db.get(kind) || []).length; },
@@ -46,9 +46,9 @@
     },
     require(feature, label) {
       if (this.can(feature)) return true;
-      throw limitError(label + ' is part of Pro Lifetime.');
+      throw limitError(label + ' is part of Premium.');
     },
-    set(id) { if (PD.PLANS[id]) return db.patch('settings', { plan: id }); },
+    set(id) { id = PD.PLAN_ALIASES[id] || id; if (PD.PLANS[id]) return db.patch('settings', { plan: id }); },
   };
 
   /* ---------------- desks ---------------- */
@@ -114,7 +114,10 @@
     },
     remove(id) { return db.remove('snippets', id); },
     byShortcut(sc) { return db.get('snippets').find((s) => s.shortcut && s.shortcut === String(sc).toLowerCase()) || null; },
-    /* Replace {{date}}, {{time}}, {{company.*}}, {{session.<field>}} placeholders. Unknown ones stay as-is. */
+    /* Replace {{date}}, {{time}}, {{company.*}}, {{standard.*}}, {{session.<field>}} placeholders. Unknown ones stay as-is.
+       Personalized messages (WhatsApp/email replies) should use {{standard.*}} / {{company.*}}, not {{session.*}} —
+       the person you are replying to is not necessarily the one held in the active session. {{session.*}} stays
+       available for advanced use (it is what paste blueprints use internally). */
     render(text) {
       const co = db.get('company') || {}, ses = PD.sessions.active();
       return String(text || '').replace(/\{\{\s*([^}]+?)\s*\}\}/g, (m, k) => {
@@ -124,6 +127,7 @@
           const v = { name: co.name, address: co.address, maps: co.mapsLink, whatsapp: co.whatsapp, email: co.email }[k.slice(8)];
           return v || m;
         }
+        if (k.indexOf('standard.') === 0) { const v = PD.standards.value(k.slice(9)); return v ? v : m; }
         if (k.indexOf('session.') === 0) { const v = PD.sessions.value(ses, k.slice(8)); return v ? v : m; }
         return m;
       });
@@ -131,6 +135,34 @@
     markUsed(s, host) {
       db.upsert('snippets', { id: s.id, uses: (s.uses || 0) + 1, lastUsedAt: Date.now() });
       PD.analytics.track('snippet', { deskId: (PD.desks.active() || {}).id, snippetId: s.id, host });
+    },
+  };
+
+  /* ---------------- standard values ----------------
+     Set once in Settings, reused in every snippet as {{standard.key}}. For facts that are true regardless of
+     who you're replying to (salary figure, office location, working hours) — unlike session data, which is
+     per-candidate and expires. */
+  PD.STANDARD_DEFAULTS = [
+    { key: 'salary', label: 'Salary figure', value: '' },
+    { key: 'location', label: 'Job location', value: '' },
+    { key: 'workinghours', label: 'Working hours', value: '' },
+    { key: 'package', label: 'Package / benefits', value: '' },
+  ];
+  PD.standards = {
+    all() {
+      const s = db.get('settings').standardFields;
+      return s && s.length ? s : PD.STANDARD_DEFAULTS.slice();
+    },
+    value(label) {
+      const k = U.normKey(label), f = this.all().find((x) => x.key === k || U.normKey(x.label) === k);
+      return f ? f.value : '';
+    },
+    save(list) { return db.patch('settings', { standardFields: list }); },
+    set(label, value) {
+      const k = U.normKey(label), list = this.all().slice();
+      const i = list.findIndex((x) => x.key === k || U.normKey(x.label) === k);
+      if (i >= 0) list[i] = Object.assign({}, list[i], { value }); else list.push({ key: k, label, value });
+      return this.save(list);
     },
   };
 
@@ -327,6 +359,60 @@
     remove(id) { return db.remove('blueprints', id); },
   };
 
+  /* ---------------- leads ----------------
+     A "requirements" WhatsApp message asks a candidate to reply with Name, Phone, DOB, Marital Status,
+     Children, Experience, Next of Kin, etc. The candidate's reply is pasted in as one block of text; this
+     decodes "Label: value" / "Label - value" lines into a permanent record (leads do NOT expire like sessions —
+     they are meant for a client list, exported later to a spreadsheet). */
+  const LEAD_LABELS = ['Full Name', 'Name', 'Phone', 'Phone Number', 'ID Number', 'Passport Number', 'Date of Birth', 'DOB',
+    'Marital Status', 'Number of Children', 'Children', 'Experience', 'Next of Kin', 'Next of Kin Phone', 'Nationality', 'Email', 'Address'];
+  PD.leads = {
+    /* Splits on line breaks, then on the first ":" or " - " on each line. Lines that don't look like "label: value"
+       are skipped. No AI — this is a plain, predictable parser; if a message doesn't use that shape, add fields by hand. */
+    parseMessage(text) {
+      const lines = String(text || '').split(/\r?\n/);
+      const fields = [];
+      lines.forEach((line) => {
+        line = line.trim(); if (!line) return;
+        const m = line.match(/^[-*\d.\s]*([A-Za-z][A-Za-z /()]{1,40}?)\s*[:\-–]\s+(.+)$/);
+        if (m && U.oneLine(m[2])) fields.push({ label: U.oneLine(m[1]).replace(/\s+/g, ' '), value: U.oneLine(m[2]) });
+      });
+      return { fields, raw: text };
+    },
+    all() { return db.get('leads'); },
+    create(o) {
+      o = o || {};
+      const fields = o.fields || [];
+      const nameF = fields.find((f) => /name/i.test(f.label));
+      return db.upsert('leads', { name: (nameF && nameF.value) || o.name || 'Unnamed lead', deskId: o.deskId || (PD.desks.active() || {}).id || null, fields, source: o.source || 'pasted', raw: o.raw || '' });
+    },
+    update(id, patch) { return db.upsert('leads', Object.assign({ id }, patch)); },
+    remove(id) { return db.remove('leads', id); },
+    /* All distinct labels across leads, in first-seen order — used as spreadsheet columns. */
+    columns(rows) {
+      const seen = [], set = new Set();
+      (rows || this.all()).forEach((l) => l.fields.forEach((f) => { const k = U.normKey(f.label); if (!set.has(k)) { set.add(k); seen.push(f.label); } }));
+      return seen.length ? seen : LEAD_LABELS.slice(0, 6);
+    },
+    /* Tab-separated rows (header + data) — paste straight into Google Sheets / Excel. */
+    toSpreadsheetText(rows) {
+      rows = rows || this.all();
+      const cols = this.columns(rows);
+      const cell = (s) => String(s == null ? '' : s).replace(/[\t\n]+/g, ' ');
+      const lines = [cols.concat('Added').join('\t')];
+      rows.forEach((l) => lines.push(cols.map((c) => { const f = l.fields.find((x) => U.normKey(x.label) === U.normKey(c)); return cell(f ? f.value : ''); }).concat(U.dayKey(l.createdAt)).join('\t')));
+      return lines.join('\n');
+    },
+    toCsv(rows) {
+      rows = rows || this.all();
+      const cols = this.columns(rows);
+      const cell = (s) => '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"';
+      const lines = [cols.concat('Added').map(cell).join(',')];
+      rows.forEach((l) => lines.push(cols.map((c) => { const f = l.fields.find((x) => U.normKey(x.label) === U.normKey(c)); return f ? f.value : ''; }).concat(U.dayKey(l.createdAt)).map(cell).join(',')));
+      return lines.join('\n');
+    },
+  };
+
   /* ---------------- files ---------------- */
   PD.files = {
     visible(deskId) { return db.get('files').filter((f) => f.kind === 'static' && (!f.deskId || f.deskId === deskId || f.shared)); },
@@ -472,6 +558,7 @@
     { id: 'new-task', title: 'New task…', keywords: 'add reminder todo remind' },
     { id: 'new-capture', title: 'Create capture blueprint', keywords: 'teach highlight fields copy details' },
     { id: 'new-paste', title: 'Create paste blueprint', keywords: 'teach map form autofill' },
+    { id: 'new-lead', title: 'Extract a lead from a pasted reply', keywords: 'requirements process candidate list decode' },
     { id: 'end-session', title: 'End current session', keywords: 'clear candidate' },
     { id: 'resume-auto', title: 'Resume automatic desk detection', keywords: 'auto context' },
     { id: 'open-dashboard', title: 'Open dashboard', keywords: 'account website' },

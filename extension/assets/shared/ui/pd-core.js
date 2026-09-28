@@ -1,5 +1,5 @@
 /*
- * PasteDeck core — config, feature flags, plan limits, utilities, icons.
+ * PasteBoard core — config, feature flags, plan limits, utilities, icons.
  * Classic script (no ES modules) so it runs from file://, in extension pages,
  * in content scripts and in the MV3 service worker (importScripts).
  */
@@ -11,13 +11,17 @@
   PD.SCHEMA_VERSION = 1;
 
   PD.CONFIG = {
-    siteUrl: 'https://pastedeck.com',   // extension setting can override (dev: http://localhost:8080)
-    defaultPlan: 'pro',                 // DEV BUILD: everything unlocked. Set to 'free' before public launch.
+    siteUrl: 'https://pasteboard.com',   // extension setting can override (dev: http://localhost:8080)
+    defaultPlan: 'premium',             // DEV BUILD: everything unlocked so every feature can be tried. Set to 'free' before public launch.
     historyLimit: 200,
     maxFileBytes: 5 * 1024 * 1024,
     maxClipImageBytes: 1.5 * 1024 * 1024,
     maxClipTextChars: 5000,
     sessionFileNote: 'Session files are deleted when their session expires.',
+    extraDevicePriceUSD: 2.5,
+    cloudSyncPriceUSD: 10,
+    cloudSyncByoPriceUSD: 7,
+    trialDays: 14,
   };
 
   /* Feature flags. Backend-dependent features ship scaffolded but OFF. Overridable per user in settings.flags. */
@@ -42,10 +46,13 @@
   };
 
   PD.PLANS = {
-    free:     { id: 'free',     label: 'Free',         snippets: 5,        desks: 2,        sessions: 2,        files: false, blueprints: false, autofill: false },
-    freeplus: { id: 'freeplus', label: 'Free+ Email',  snippets: 10,       desks: 2,        sessions: 2,        files: false, blueprints: false, autofill: false },
-    pro:      { id: 'pro',      label: 'Pro Lifetime', snippets: Infinity, desks: Infinity, sessions: Infinity, files: true,  blueprints: true,  autofill: true },
+    free:       { id: 'free',       label: 'Free',              price: 0,  billing: 'free',    snippets: 4,        desks: 1,        sessions: 1,        devices: 1,        files: false, blueprints: false, autofill: false, cloudSync: false },
+    freeplus:   { id: 'freeplus',   label: 'Free + Email',      price: 0,  billing: 'free',    snippets: 7,        desks: 2,        sessions: 2,        devices: 1,        files: false, blueprints: false, autofill: false, cloudSync: false },
+    premium:    { id: 'premium',    label: 'Premium',           price: 20, billing: 'one-time', snippets: Infinity, desks: Infinity, sessions: Infinity, devices: 5,        files: true,  blueprints: true,  autofill: true,  cloudSync: false },
+    premiumpro: { id: 'premiumpro', label: 'Premium Pro',       price: 40, billing: 'one-time', snippets: Infinity, desks: Infinity, sessions: Infinity, devices: Infinity, files: true,  blueprints: true,  autofill: true,  cloudSync: true, paused: true },
   };
+  /* Legacy id from before the pricing overhaul — keeps old local data (settings.plan: 'pro') working. */
+  PD.PLAN_ALIASES = { pro: 'premium' };
 
   /* Estimated seconds saved per action (used for the analytics estimate). */
   PD.TIME_SAVED = { snippet: 20, autofillField: 6, captureField: 5 };

@@ -1,4 +1,4 @@
-/* PasteDeck extension UI (popup + side panel). Builds on shared/ui/pd.css. */
+/* PasteBoard extension UI (popup + side panel). Builds on shared/ui/pd.css. */
 html, body { margin: 0; }
 body.surface-popup { width: 380px; height: 560px; overflow: hidden; }
 body.surface-sidepanel { width: 100%; height: 100vh; overflow: hidden; }

@@ -1,5 +1,5 @@
 /*
- * PasteDeck storage layer.
+ * PasteBoard storage layer.
  *
  *   PD.db  — synchronous reads from an in-memory cache, async write-through to an adapter.
  *   Adapters: chrome.storage.local (extension) | extension-bridge (website talking to the extension)
@@ -14,10 +14,10 @@
   if (PD.db && PD.db.NAMESPACES) return; // already loaded (e.g. content script injected twice)
   const U = PD.util;
 
-  const NAMESPACES = ['meta', 'desks', 'snippets', 'sessions', 'blueprints', 'tasks', 'history', 'files', 'company', 'team', 'settings', 'analytics', 'devices', 'outbox'];
+  const NAMESPACES = ['meta', 'desks', 'snippets', 'sessions', 'blueprints', 'tasks', 'history', 'files', 'company', 'team', 'settings', 'analytics', 'devices', 'leads', 'outbox'];
   const DEFAULTS = () => ({
     meta: {}, desks: [], snippets: [], sessions: [], blueprints: [], tasks: [], history: [], files: [],
-    company: {}, team: {}, settings: {}, analytics: { days: {} }, devices: [], outbox: [],
+    company: {}, team: {}, settings: {}, analytics: { days: {} }, devices: [], leads: [], outbox: [],
   });
   const K = (ns) => 'pd:' + ns;
 
@@ -69,7 +69,7 @@
     };
   }
 
-  /* Website <-> extension bridge (content/bridge.js answers these messages on pastedeck.com / localhost). */
+  /* Website <-> extension bridge (content/bridge.js answers these messages on pasteboard.com / localhost). */
   function bridgeAdapter() {
     let seq = 0; const pending = new Map(); const subs = [];
     g.addEventListener('message', (e) => {
@@ -144,7 +144,7 @@
 
     on(fn) { listeners.push(fn); return () => { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); }; },
     _emit(ns, source) { listeners.slice().forEach((f) => { try { f(ns, source); } catch (e) { console.error(e); } }); },
-    _persist(ns) { return Promise.resolve(db.adapter && db.adapter.save({ [K(ns)]: db.cache[ns] })).catch((e) => console.error('[PasteDeck] storage write failed', ns, e)); },
+    _persist(ns) { return Promise.resolve(db.adapter && db.adapter.save({ [K(ns)]: db.cache[ns] })).catch((e) => console.error('[PasteBoard] storage write failed', ns, e)); },
     _commit(ns, id, op) {
       const p = db._persist(ns);
       if (ns !== 'outbox' && PD.flags.get('cloudSync')) { db.cache.outbox.push({ ns, id, op, ts: Date.now() }); db._persist('outbox'); }
@@ -176,10 +176,10 @@
 
     exportAll() {
       const data = {}; NAMESPACES.forEach((ns) => { if (ns !== 'outbox') data[ns] = db.cache[ns]; });
-      return { app: 'pastedeck', schemaVersion: PD.SCHEMA_VERSION, exportedAt: new Date().toISOString(), data };
+      return { app: 'pasteboard', schemaVersion: PD.SCHEMA_VERSION, exportedAt: new Date().toISOString(), data };
     },
     async importAll(obj) {
-      if (!obj || obj.app !== 'pastedeck' || !obj.data) throw new Error('Not a PasteDeck export file');
+      if (!obj || obj.app !== 'pasteboard' || !obj.data) throw new Error('Not a PasteBoard export file');
       for (const ns of NAMESPACES) { if (ns !== 'outbox' && obj.data[ns] !== undefined) { db.cache[ns] = obj.data[ns]; await db._persist(ns); } }
       NAMESPACES.forEach((ns) => db._emit(ns, 'local'));
     },
@@ -214,13 +214,13 @@
     ];
     db.cache.snippets = [
       meta({ id: 'snip_salary', deskId: D.rec, title: 'Salary reply', category: 'Replies', favorite: true, shared: false, shortcut: ';sal', uses: 0,
-        body: 'Hi {{session.Full Name}}, the monthly salary for this position is {{session.Salary}}. Let me know if you would like to proceed.' }),
+        body: 'Hi, the monthly salary for this position is {{standard.salary}}. Let me know if you would like to proceed.' }),
       meta({ id: 'snip_office', deskId: D.rec, title: 'Office location', category: 'Company', favorite: true, shared: true, shortcut: ';loc', uses: 0,
         body: 'Our office is at {{company.address}}.\nMap: {{company.maps}}' }),
       meta({ id: 'snip_req', deskId: D.rec, title: 'Requirements checklist', category: 'Replies', favorite: false, shared: false, shortcut: ';req', uses: 0,
         body: 'Please send us:\n1. A clear copy of your passport\n2. A passport-size photo\n3. A full-body photo\n4. Your phone number' }),
       meta({ id: 'snip_interview', deskId: D.rec, title: 'Interview invitation', category: 'Replies', favorite: false, shared: false, shortcut: ';int', uses: 0,
-        body: 'Hello {{session.Full Name}}, you are invited for an interview at {{company.address}}. Please bring your original passport and ID.' }),
+        body: 'Hello, you are invited for an interview at {{company.address}}. Please bring your original passport and ID.' }),
       meta({ id: 'snip_thanks', deskId: null, title: 'Thanks, will follow up', category: 'General', favorite: false, shared: false, shortcut: ';ty', uses: 0,
         body: "Thank you. I'll get back to you shortly." }),
       meta({ id: 'snip_sig', deskId: D.mail, title: 'Email signature', category: 'Email', favorite: false, shared: false, shortcut: ';sig', uses: 0,
@@ -230,6 +230,7 @@
     db.cache.blueprints = [];
     db.cache.files = [];
     db.cache.history = [];
+    db.cache.leads = [];
     db.cache.tasks = [
       meta({ id: 'task_welcome', title: 'Try the command bar: press Ctrl+Shift+Space on any page', dueAt: null, recurrence: null, snoozedUntil: null, done: false, notifiedAt: null }),
     ];
@@ -239,42 +240,21 @@
     };
     db.cache.team = {
       meId: 'usr_me',
-      members: [
-        meta({ id: 'usr_me', name: 'You', email: 'you@example.com', role: 'owner', status: 'active' }),
-        meta({ id: 'usr_amina', name: 'Amina Wanjiru', email: 'amina@example.com', role: 'admin', status: 'active' }),
-        meta({ id: 'usr_brian', name: 'Brian Otieno', email: 'brian@example.com', role: 'staff', status: 'active' }),
-        meta({ id: 'usr_grace', name: 'Grace Njeri', email: 'grace@example.com', role: 'staff', status: 'pending' }),
-      ],
+      /* Only the owner is seeded. Everyone else joins through a device/user request that the owner approves
+         (see PD.team.request / approve) — there is no sample team on a production install. */
+      members: [ meta({ id: 'usr_me', name: 'You', email: 'you@example.com', role: 'owner', status: 'active', analyticsAccess: true }) ],
     };
     db.cache.settings = {
       activeDeskId: D.rec, activeSessionId: null, manualPin: false, autoDetect: true,
       clipboardHistory: true, ignoreHosts: [], notifications: true, floatingPill: true, textExpansion: true,
       defaultExpiry: '1h', plan: PD.CONFIG.defaultPlan, siteUrl: PD.CONFIG.siteUrl, flags: {},
+      standardFields: PD.STANDARD_DEFAULTS.slice(),
     };
     db.cache.analytics = { days: {} };
     db.cache.devices = [];
     db.cache.outbox = [];
     db.cache.meta = { schemaVersion: PD.SCHEMA_VERSION, seededAt: now, installedAt: now, deviceId: U.uid('dev') };
-    if (opts.demoAnalytics) PD.seedDemoAnalytics(true);
     for (const ns of NAMESPACES) await db._persist(ns);
   };
 
-  /* Sample analytics so charts are not empty in website demo mode / when the founder asks for demo data. */
-  PD.seedDemoAnalytics = function (silent) {
-    const days = {};
-    const deskIds = db.cache.desks.map((d) => d.id);
-    const snips = db.cache.snippets.map((s) => s.id);
-    const sites = ['web.whatsapp.com', 'mail.google.com', 'visa.example.com', 'docs.google.com'];
-    for (let i = 6; i >= 0; i--) {
-      const key = U.dayKey(Date.now() - i * 864e5);
-      const s = 8 + ((i * 7) % 13), a = (i * 11) % 9 + 2, c = (i * 5) % 6 + 1;
-      const d = { snippets: s, autofills: a * 5, captures: c * 5, savedSec: s * PD.TIME_SAVED.snippet + a * 5 * PD.TIME_SAVED.autofillField + c * 5 * PD.TIME_SAVED.captureField, desks: {}, snippetsById: {}, sites: {} };
-      deskIds.forEach((id, n) => { d.desks[id] = Math.max(1, Math.round((s + a) / (n + 1.5))); });
-      snips.forEach((id, n) => { d.snippetsById[id] = Math.max(0, Math.round(s / (n + 2))); });
-      sites.forEach((h, n) => { d.sites[h] = Math.max(1, Math.round((s + a) / (n + 1.7))); });
-      days[key] = d;
-    }
-    db.cache.analytics = { days, demo: true };
-    if (!silent) return db.set('analytics', db.cache.analytics);
-  };
 })(typeof globalThis !== 'undefined' ? globalThis : self);

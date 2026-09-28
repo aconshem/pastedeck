@@ -1,5 +1,5 @@
 /*
- * PasteDeck bridge — runs ONLY on pastedeck.com and localhost (see manifest).
+ * PasteBoard bridge — runs ONLY on pasteboard.com and localhost (see manifest).
  * Lets the website dashboard read/write the extension's local data until real cloud sync exists.
  * Only keys starting with "pd:" / "pdb:" are reachable. Replace with authenticated cloud sync (docs/architecture.md).
  */

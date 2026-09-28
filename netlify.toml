@@ -1,6 +1,10 @@
-# Netlify: no build step, just publish the website/ folder.
+# Netlify: no build step for the site itself — just publish website/ and run the functions.
 [build]
   publish = "website"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
 
 [[headers]]
   for = "/*"

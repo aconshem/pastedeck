@@ -1,5 +1,5 @@
 /*
- * PasteDeck extension UI — used by both the popup (compact) and the side panel (roomy).
+ * PasteBoard extension UI — used by both the popup (compact) and the side panel (roomy).
  * PDApp.mount({ surface: 'popup' | 'sidepanel', tabs: [...] })
  */
 (function () {
@@ -15,6 +15,7 @@
     session: { label: 'Session', icon: 'user' },
     files: { label: 'Files', icon: 'file' },
     tasks: { label: 'Tasks', icon: 'tasks' },
+    leads: { label: 'Leads', icon: 'users' },
     clips: { label: 'Clips', icon: 'clipboard' },
   };
   const S = { surface: 'popup', tabs: [], tab: 'search', tabId: null, tabUrl: '', windowId: null, q: '', chip: 'all', results: [], sel: 0, deskDetail: null, newSession: false, clipQ: '' };
@@ -52,8 +53,8 @@
   }
   function upsell(msg) {
     PD.ui.modal({
-      title: 'Available on Pro Lifetime',
-      html: '<p>' + esc(msg) + '</p><p class="pd-muted pd-sm" style="margin-top:8px">Pro Lifetime unlocks unlimited snippets and desks, the file shelf, blueprints and autofill.</p>',
+      title: 'Available on Premium',
+      html: '<p>' + esc(msg) + '</p><p class="pd-muted pd-sm" style="margin-top:8px">Premium unlocks unlimited snippets, desks and sessions, the file shelf, blueprints and autofill.</p>',
       actions: [{ label: 'Not now' }, { label: 'See plans', primary: true, onClick() { site('pricing'); } }],
     });
   }
@@ -112,6 +113,7 @@
         { label: 'Open dashboard', icon: 'home', onClick: () => site('dashboard') },
         { label: 'Manage devices', icon: 'monitor', onClick: () => site('devices') },
         { label: 'Log in', icon: 'user', onClick: () => site('login') },
+        { label: 'Create account', icon: 'plus', onClick: () => site('signup') },
         '-',
         { label: 'Settings', icon: 'settings', onClick: () => chrome.runtime.openOptionsPage() },
         { label: 'Keyboard shortcuts', icon: 'command', onClick: () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }) },
@@ -126,7 +128,7 @@
   }
 
   function renderTab() {
-    ({ search: tabSearch, desks: tabDesks, session: tabSession, files: tabFiles, tasks: tabTasks, clips: tabClips }[S.tab] || tabSearch)();
+    ({ search: tabSearch, desks: tabDesks, session: tabSession, files: tabFiles, tasks: tabTasks, leads: tabLeads, clips: tabClips }[S.tab] || tabSearch)();
   }
   function refreshTab() {
     if (S.tab === 'search') updateResults(); else if (S.tab === 'clips') updateClips(); else renderTab();
@@ -225,6 +227,7 @@
       case 'new-task': S.tab = 'tasks'; renderTabs(); renderTab(); setTimeout(() => { const t = $('#taskIn'); if (t) t.focus(); }, 30); break;
       case 'new-capture': case 'new-paste': startRecorder(id === 'new-capture' ? 'capture' : 'paste', desk && desk.id); break;
       case 'end-session': { const s = PD.sessions.active(); if (s) { PD.sessions.end(s.id); toast('Session ended'); refreshTab(); } else toast('No active session'); break; }
+      case 'new-lead': S.tab = 'leads'; renderTabs(); renderTab(); newLeadModal(); break;
       case 'resume-auto': PD.desks.resumeAuto(); renderHeader(); break;
       case 'open-dashboard': site('dashboard'); break;
       case 'devices': site('devices'); break;
@@ -233,7 +236,7 @@
   }
   async function startRecorder(kind, deskId) {
     try { PD.plan.require('blueprints', 'Blueprints'); } catch (e) { return fail(e); }
-    if (restricted()) return toast('Open the website you want to teach PasteDeck first.', 'error');
+    if (restricted()) return toast('Open the website you want to teach PasteBoard first.', 'error');
     const r = await sendTab({ type: 'PD_START_RECORDER', kind, deskId });
     if (!r || !r.ok) return toast('Could not start on this page. Reload it and try again.', 'error');
     closeIfPopup();
@@ -264,7 +267,7 @@
       '<div class="pd-field"><label class="pd-label">Desk name</label><input class="pd-input" data-desk-name value="' + esc(d.name) + '"></div>' +
       '<div class="pd-field"><label class="pd-label">Switch to this desk on these websites</label><input class="pd-input" data-desk-urls value="' + esc((d.urlPatterns || []).join(', ')) + '" placeholder="web.whatsapp.com, mail.google.com"><div class="pd-help">Comma separated. Subdomains match automatically.</div></div>' +
       '<div class="sec-h"><span>Blueprints</span></div>' +
-      (bps.length ? bps.map((b) => '<div class="bp-row"><div class="pd-row__icon">' + I(b.kind === 'capture' ? 'target' : 'form', 15) + '</div><div class="bp-row__b"><div class="bp-row__t">' + esc(b.name) + '</div><div class="pd-row__sub">' + (b.kind === 'capture' ? 'Copies from ' : 'Fills on ') + esc(b.host) + ' · ' + b.fields.length + ' fields</div></div><button class="pd-btn pd-btn--sm" data-act="run-bp" data-id="' + b.id + '">' + I('play', 12) + ' Run</button><button class="pd-btn pd-btn--ghost pd-btn--icon pd-btn--sm" data-act="del-bp" data-id="' + b.id + '" aria-label="Delete blueprint">' + I('trash', 14) + '</button></div>').join('') : '<p class="pd-muted pd-sm">No blueprints yet. Open a client page, then teach PasteDeck once.</p>') +
+      (bps.length ? bps.map((b) => '<div class="bp-row"><div class="pd-row__icon">' + I(b.kind === 'capture' ? 'target' : 'form', 15) + '</div><div class="bp-row__b"><div class="bp-row__t">' + esc(b.name) + '</div><div class="pd-row__sub">' + (b.kind === 'capture' ? 'Copies from ' : 'Fills on ') + esc(b.host) + ' · ' + b.fields.length + ' fields</div></div><button class="pd-btn pd-btn--sm" data-act="run-bp" data-id="' + b.id + '">' + I('play', 12) + ' Run</button><button class="pd-btn pd-btn--ghost pd-btn--icon pd-btn--sm" data-act="del-bp" data-id="' + b.id + '" aria-label="Delete blueprint">' + I('trash', 14) + '</button></div>').join('') : '<p class="pd-muted pd-sm">No blueprints yet. Open a client page, then teach PasteBoard once.</p>') +
       '<div style="display:flex;gap:8px;margin-top:10px"><button class="pd-btn pd-btn--sm" data-act="new-bp" data-kind="capture" style="flex:1">' + I('target', 13) + ' Capture blueprint</button><button class="pd-btn pd-btn--sm" data-act="new-bp" data-kind="paste" style="flex:1">' + I('form', 13) + ' Paste blueprint</button></div>' +
       '<div style="margin-top:18px"><button class="pd-btn pd-btn--danger pd-btn--sm" data-act="del-desk" data-id="' + id + '">' + I('trash', 13) + ' Delete desk</button></div>';
   }
@@ -356,6 +359,33 @@
       '<div class="task__b"><div class="task__t' + (t.done ? ' is-done' : '') + '">' + esc(t.title) + '</div><div class="task__s' + (late ? ' is-late' : '') + '">' + (due ? U.fmtDue(due) : 'No due time') + (t.recurrence ? ' · repeats ' + t.recurrence : '') + (t.snoozedUntil && t.snoozedUntil > (t.dueAt || 0) ? ' · snoozed' : '') + '</div></div>' +
       (t.done ? '' : '<div class="snooze-wrap" title="Snooze">' + I('clock', 15) + '<select class="mini" data-snooze="' + t.id + '" aria-label="Snooze"><option value="">Snooze</option><option value="600000">10 minutes</option><option value="3600000">1 hour</option><option value="tomorrow">Tomorrow 9:00</option></select></div>') +
       '<button class="pd-btn pd-btn--ghost pd-btn--icon pd-btn--sm" data-act="del-task" data-id="' + t.id + '" aria-label="Delete task">' + I('trash', 13) + '</button></div>';
+  }
+
+  /* ------------------------------------------------------------------ LEADS */
+  function tabLeads() {
+    const rows = db.get('leads').slice().sort((a, b) => b.createdAt - a.createdAt);
+    main.innerHTML =
+      '<div class="status-line">' + I('users', 13) + '<span>A client list that does not expire like sessions do. Paste a candidate\u2019s reply to your requirements message and it is decoded into a lead.</span></div>' +
+      '<button class="pd-btn pd-btn--primary pd-btn--block" data-act="new-lead">' + I('plus', 14) + ' Paste a reply to extract details</button>' +
+      (rows.length ? '<div class="sec-h" style="margin-top:14px"><span>' + rows.length + ' lead' + (rows.length === 1 ? '' : 's') + '</span><button class="pd-btn pd-btn--sm" data-act="export-leads">' + I('download', 12) + ' Copy for spreadsheet</button></div>' +
+        rows.map((l) => '<div class="bp-row"><div class="pd-row__icon">' + I('user', 15) + '</div><div class="bp-row__b"><div class="bp-row__t">' + esc(l.name) + '</div><div class="pd-row__sub">' + l.fields.slice(0, 3).map((f) => esc(f.label) + ': ' + esc(U.clip(f.value, 18))).join(' · ') + '</div></div><button class="pd-btn pd-btn--ghost pd-btn--icon pd-btn--sm" data-act="del-lead" data-id="' + l.id + '" aria-label="Delete lead">' + I('trash', 13) + '</button></div>').join('')
+        : '<div class="pd-empty" style="margin-top:14px"><strong>No leads yet</strong>When a candidate replies to your requirements message, paste their reply above.</div>');
+  }
+  function newLeadModal() {
+    PD.ui.modal({
+      title: 'Extract a lead from a pasted reply', wide: true,
+      html: '<p class="pd-help" style="margin-bottom:8px">Paste the candidate\u2019s WhatsApp or email reply below — one detail per line, like <code>Name: Mary Achieng</code>.</p>' +
+        '<textarea class="pd-textarea" name="raw" style="min-height:160px" placeholder="Name: Mary Achieng\nPhone: 0722111222\nDate of Birth: 14/05/1994\nMarital Status: Single"></textarea><div id="leadPrev" class="pd-help" style="margin-top:8px"></div>',
+      onOpen(h) {
+        const ta = h.$('textarea'), prev = h.$('#leadPrev');
+        ta.addEventListener('input', () => { const p = PD.leads.parseMessage(ta.value); prev.textContent = p.fields.length ? 'Found: ' + p.fields.map((f) => f.label).join(', ') : (ta.value.trim() ? 'No “label: value” lines found yet.' : ''); });
+      },
+      actions: [{ label: 'Cancel' }, { label: 'Save lead', primary: true, onClick(h) {
+        const v = h.values(); const p = PD.leads.parseMessage(v.raw);
+        if (!p.fields.length) { toast('Could not find any “label: value” lines in that text.', 'error'); return false; }
+        PD.leads.create({ fields: p.fields, raw: v.raw }); renderTab();
+      } }],
+    });
   }
 
   /* ------------------------------------------------------------------ CLIPS (side panel) */
@@ -471,6 +501,9 @@
         case 'del-file': if (await PD.ui.confirm('Delete this file?', { danger: true, confirmLabel: 'Delete' })) { await PD.files.remove(id); renderTab(); } break;
         case 'toggle-task': { const t = db.find('tasks', id); if (t.done) PD.tasks.reopen(id); else PD.tasks.complete(id); renderTab(); break; }
         case 'del-task': PD.tasks.remove(id); renderTab(); break;
+        case 'new-lead': newLeadModal(); break;
+        case 'del-lead': if (await PD.ui.confirm('Delete this lead?', { danger: true, confirmLabel: 'Delete' })) { PD.leads.remove(id); renderTab(); } break;
+        case 'export-leads': { const ok = await copyText(PD.leads.toSpreadsheetText()); toast(ok ? 'Copied — paste it straight into Google Sheets or Excel' : 'Could not copy.', ok ? '' : 'error'); break; }
         case 'copy-clip': { const h = db.find('history', id); if (h) copyClip(h); break; }
         case 'pin-clip': PD.history.pin(id); updateClips(); break;
         case 'del-clip': PD.history.remove(id); updateClips(); break;

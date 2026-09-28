@@ -13,12 +13,18 @@
     const plan = PD.plan.id();
     root.innerHTML =
       '<div class="pd-card card"><h2>Account</h2>' +
-      '<div class="item"><div>Log in and manage your account<small>Opens the PasteDeck website. The extension itself never shows a login form.</small></div><div class="ctl auto"><button class="pd-btn" data-a="login">Log in</button> <button class="pd-btn" data-a="devices">Manage devices</button></div></div>' +
+      '<div class="item"><div>Log in and manage your account<small>Opens the PasteBoard website. The extension itself never shows a login form.</small></div><div class="ctl auto"><button class="pd-btn" data-a="signup">Create account</button> <button class="pd-btn" data-a="login">Log in</button> <button class="pd-btn" data-a="devices">Manage devices</button></div></div>' +
       '<div class="item"><div>Dashboard<small>Team, company details, analytics.</small></div><div class="ctl auto"><button class="pd-btn" data-a="dashboard">Open dashboard</button></div></div></div>' +
+
+      '<div class="pd-card card"><h2>Standard values</h2>' +
+      '<div class="item" style="display:block"><div style="margin-bottom:10px">Facts that are true no matter who you\'re replying to — salary, location, working hours. Use them in any snippet as <code>{{standard.salary}}</code> etc. ' +
+      '<small>Unlike session details, these don\'t expire and aren\'t specific to one candidate — that\'s why personalized replies should use these, not <code>{{session.*}}</code>, since the person you\'re messaging isn\'t necessarily the one held in the active session.</small></div>' +
+      (db.get('settings').standardFields || PD.STANDARD_DEFAULTS).map((f, i) => '<div class="pd-field-row" style="margin-bottom:8px"><div class="pd-field" style="margin-bottom:0"><input class="pd-input" data-std-label="' + i + '" value="' + esc(f.label) + '" placeholder="Label"></div><div class="pd-field" style="margin-bottom:0"><input class="pd-input" data-std-value="' + i + '" value="' + esc(f.value) + '" placeholder="Value"></div></div>').join('') +
+      '<button class="pd-btn pd-btn--sm" data-a="add-standard">' + '+ Add value</button></div></div>' +
 
       '<div class="pd-card card"><h2>General</h2>' +
       '<div class="item"><div>Switch desks automatically<small>Uses the website address. You can always pin a desk by hand.</small></div>' + sw('autoDetect', s.autoDetect !== false) + '</div>' +
-      '<div class="item"><div>Show the small PasteDeck button on sites with blueprints<small>Lets you copy details or fill a form in one click.</small></div>' + sw('floatingPill', s.floatingPill !== false) + '</div>' +
+      '<div class="item"><div>Show the small PasteBoard button on sites with blueprints<small>Lets you copy details or fill a form in one click.</small></div>' + sw('floatingPill', s.floatingPill !== false) + '</div>' +
       '<div class="item"><div>Type-to-insert shortcuts<small>Type <code>;sal</code> and a space to expand a snippet.</small></div>' + sw('textExpansion', s.textExpansion !== false) + '</div>' +
       '<div class="item"><div>Reminder notifications<small>Uses Chrome notifications.</small></div>' + sw('notifications', s.notifications !== false) + '</div>' +
       '<div class="item"><div>Default session length<small>Candidate sessions delete themselves after this.</small></div><div class="ctl"><select class="pd-select" data-s="defaultExpiry">' + PD.SESSION_PRESETS.map((p) => '<option value="' + p.id + '"' + ((s.defaultExpiry || '1h') === p.id ? ' selected' : '') + '>' + p.label + '</option>').join('') + '</select></div></div>' +
@@ -47,7 +53,15 @@
   db.on((ns, src) => { if (src === 'remote' && !root.contains(document.activeElement)) render(); });
 
   root.addEventListener('change', (e) => {
-    const t = e.target, k = t.dataset && t.dataset.s;
+    const t = e.target;
+    if (t.dataset.stdLabel !== undefined || t.dataset.stdValue !== undefined) {
+      const i = +(t.dataset.stdLabel !== undefined ? t.dataset.stdLabel : t.dataset.stdValue);
+      const list = (db.get('settings').standardFields || PD.STANDARD_DEFAULTS).slice();
+      const row = Object.assign({}, list[i]);
+      if (t.dataset.stdLabel !== undefined) row.label = t.value.trim() || row.label; else row.value = t.value;
+      list[i] = row; db.patch('settings', { standardFields: list }); PD.ui.toast('Saved'); return;
+    }
+    const k = t.dataset && t.dataset.s;
     if (!k) return;
     if (k.indexOf('flag:') === 0) { const flags = Object.assign({}, db.get('settings').flags); flags[k.slice(5)] = t.checked; db.patch('settings', { flags }); return; }
     let v = t.type === 'checkbox' ? t.checked : t.value;
@@ -62,14 +76,15 @@
     try { await db.importAll(JSON.parse(await e.target.files[0].text())); render(); PD.ui.toast('Backup imported'); } catch (err) { PD.ui.toast(err.message, 'error'); }
     e.target.value = '';
   });
-  root.addEventListener('click', async (e) => {
+  document.body.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-a]'); if (!b) return;
     const a = b.dataset.a;
-    if (['login', 'devices', 'dashboard'].indexOf(a) >= 0) chrome.runtime.sendMessage({ type: 'PD_OPEN', page: a });
+    if (['login', 'devices', 'dashboard', 'signup'].indexOf(a) >= 0) chrome.runtime.sendMessage({ type: 'PD_OPEN', page: a });
     else if (a === 'shortcuts') chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
     else if (a === 'clear-history') { if (await PD.ui.confirm('Clear clipboard history? Pinned items are kept.', { danger: true, confirmLabel: 'Clear' })) { PD.history.clear(true); PD.ui.toast('History cleared'); } }
-    else if (a === 'export') U.download('pastedeck-backup-' + U.dayKey() + '.json', JSON.stringify(db.exportAll(), null, 2));
+    else if (a === 'export') U.download('pasteboard-backup-' + U.dayKey() + '.json', JSON.stringify(db.exportAll(), null, 2));
     else if (a === 'import') document.getElementById('imp').click();
-    else if (a === 'reset') { if (await PD.ui.confirm('Delete all PasteDeck data on this device?', { danger: true, confirmLabel: 'Delete everything', title: 'Reset PasteDeck' })) { await db.resetAll(); PD.devices.registerCurrent(); render(); PD.ui.toast('Reset complete'); } }
+    else if (a === 'add-standard') { const list = (db.get('settings').standardFields || PD.STANDARD_DEFAULTS).concat([{ key: 'field' + Date.now(), label: 'New value', value: '' }]); db.patch('settings', { standardFields: list }); render(); }
+    else if (a === 'reset') { if (await PD.ui.confirm('Delete all PasteBoard data on this device?', { danger: true, confirmLabel: 'Delete everything', title: 'Reset PasteBoard' })) { await db.resetAll(); PD.devices.registerCurrent(); render(); PD.ui.toast('Reset complete'); } }
   });
 })();

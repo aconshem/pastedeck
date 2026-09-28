@@ -1,5 +1,5 @@
 /*
- * PasteDeck service worker (MV3).
+ * PasteBoard service worker (MV3).
  * Owns: keyboard commands, reminders (alarms + notifications), session expiry sweep, clipboard-history writes,
  * smart desk detection, context menu, and the small message API used by content scripts.
  * Everything else runs in the popup / side panel / content scripts.
@@ -20,7 +20,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   await ready;
   PD.devices.registerCurrent();
   chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({ id: 'pd-save-snippet', title: 'Save selection as PasteDeck snippet', contexts: ['selection'] });
+    chrome.contextMenus.create({ id: 'pd-save-snippet', title: 'Save selection as PasteBoard snippet', contexts: ['selection'] });
   });
   try { chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }); } catch (e) { /* older Chrome */ }
   boot();
@@ -67,7 +67,7 @@ function notifyDue() {
     db.upsert('tasks', { id: t.id, notifiedAt: Date.now() });
     if (Date.now() - due > 864e5) return; // long overdue: shown in the UI, no popup
     chrome.notifications.create('task:' + t.id, {
-      type: 'basic', iconUrl: ICON, title: 'PasteDeck reminder', message: t.title,
+      type: 'basic', iconUrl: ICON, title: 'PasteBoard reminder', message: t.title,
       buttons: [{ title: 'Snooze 10 min' }, { title: 'Done' }], requireInteraction: true, priority: 2,
     });
   });
@@ -94,7 +94,7 @@ async function autoDetect(url) {
   await ready;
   const d = PD.desks.autoSwitch(url);
   const desk = d || PD.desks.active();
-  if (desk) chrome.action.setTitle({ title: 'PasteDeck · ' + desk.name });
+  if (desk) chrome.action.setTitle({ title: 'PasteBoard · ' + desk.name });
 }
 chrome.tabs.onActivated.addListener(async ({ tabId }) => { try { const t = await chrome.tabs.get(tabId); autoDetect(t.url); } catch (e) { /* tab gone */ } });
 chrome.tabs.onUpdated.addListener((tabId, info, tab) => { if (info.url && tab.active) autoDetect(info.url); });
@@ -137,6 +137,7 @@ function siteUrl(page) {
     dashboard: '/dashboard/index.html',
     devices: '/dashboard/index.html#devices',
     login: '/login/index.html?source=extension',
+    signup: '/signup/index.html?source=extension',
     pricing: '/landing/index.html#pricing',
   }[page] || '/landing/index.html');
 }

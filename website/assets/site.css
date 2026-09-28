@@ -45,6 +45,7 @@
 .flow p { font-size: 14px; color: var(--pd-muted); }
 
 .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 44px; align-items: stretch; }
+.plans--4 { grid-template-columns: repeat(4, 1fr); }
 .plan { display: flex; flex-direction: column; padding: 24px; background: #fff; border: 1px solid var(--pd-border); border-radius: 12px; }
 .plan--pro { border-color: #111; box-shadow: 0 0 0 1px #111; }
 .plan h3 { font-size: 15px; display: flex; align-items: center; gap: 8px; }
@@ -86,10 +87,10 @@
 .gicon { width: 16px; height: 16px; }
 
 @media (max-width: 860px) {
-  .features, .plans, .flow, .install { grid-template-columns: 1fr; }
+  .features, .plans, .plans--4, .flow, .install { grid-template-columns: 1fr; }
   .nav__links { display: none; }
   .nav__in { justify-content: space-between; }
   .hero { padding-top: 56px; }
   .demo { aspect-ratio: 4 / 3; }
 }
-@media (min-width: 861px) and (max-width: 1020px) { .features { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 861px) and (max-width: 1020px) { .features { grid-template-columns: repeat(2, 1fr); } .plans--4 { grid-template-columns: repeat(2, 1fr); } }

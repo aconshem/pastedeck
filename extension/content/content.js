@@ -1,5 +1,5 @@
 /*
- * PasteDeck content script — core.
+ * PasteBoard content script — core.
  * Loaded on every page (after pd-core / pd-storage / pd-domain). Stays cheap: it does NOT load the database
  * until the person actually uses something (command bar, blueprint, insert...).
  * Exposes window.__PDC for commandbar.js and blueprint.js (same isolated world).
@@ -83,6 +83,12 @@
   .fld button { background: none; border: 0; color: #9CA3AF; }
   .hl { position: absolute; pointer-events: none; border: 2px solid #111; background: rgba(17,24,39,.08); border-radius: 3px; transition: all .06s; }
   .hl.done { border-color: #067647; background: rgba(6,118,71,.1); }
+  .hl.done.manual { border-color: #B54708; background: rgba(181,71,8,.12); border-style: dashed; }
+  .sugg { position: absolute; z-index: 900; pointer-events: auto; background: #fff; border: 1px solid #E5E7EB; border-radius: 8px; box-shadow: 0 8px 20px rgba(17,24,39,.16); animation: pop .1s cubic-bezier(.2,.7,.2,1); }
+  .sugg button { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 8px 12px; background: none; border: 0; text-align: left; }
+  .sugg button:hover { background: #F3F4F6; }
+  .sugg-l { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #6B7280; }
+  .sugg-v { font-size: 13px; font-weight: 500; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
   .center { position: absolute; inset: 0; pointer-events: auto; background: rgba(17,24,39,.35); display: grid; place-items: center; padding: 16px; }
   .dlg { width: min(520px, 94vw); max-height: 86vh; overflow: auto; background: #fff; border: 1px solid #E5E7EB; border-radius: 12px; box-shadow: 0 18px 50px rgba(17,24,39,.3); animation: pop .14s cubic-bezier(.2,.7,.2,1); }
   table.pv { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -96,7 +102,7 @@
   PDC.getLayer = () => {
     if (PDC.layer && PDC.host.isConnected) return PDC.layer;
     const host = document.createElement('div');
-    host.id = 'pastedeck-root';
+    host.id = 'pasteboard-root';
     host.style.cssText = 'all: initial; position: fixed; inset: 0; width: 0; height: 0; z-index: 2147483647;';
     const root = host.attachShadow({ mode: 'open' });
     root.innerHTML = '<style>' + PDC.css + '</style><div class="layer"></div>';
@@ -280,7 +286,7 @@
     let open = false;
     const draw = () => {
       wrap.innerHTML = (open ? '<div class="pill-menu"></div>' : '') +
-        '<button class="pill-main">' + PD.icon('zap', 14) + ' PasteDeck <span style="opacity:.6">' + ctx.blueprints.length + '</span></button>' +
+        '<button class="pill-main">' + PD.icon('zap', 14) + ' PasteBoard <span style="opacity:.6">' + ctx.blueprints.length + '</span></button>' +
         (open ? '' : '');
       if (open) {
         const menu = wrap.querySelector('.pill-menu');

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Admin · PasteBoard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="../assets/shared/icons/icon-32.png">
+  <link rel="stylesheet" href="../assets/shared/ui/pd.css">
+  <link rel="stylesheet" href="../dashboard/dashboard.css">
+  <style>
+    body { background: var(--pd-bg); }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 32px 20px 80px; }
+    .gate { max-width: 380px; margin: 12vh auto; padding: 28px; background: #fff; border: 1px solid var(--pd-border); border-radius: 12px; }
+  </style>
+</head>
+<body class="pd">
+  <div id="gate" class="gate">
+    <h1 style="font-size:18px;margin-bottom:6px">PasteBoard admin</h1>
+    <p class="pd-muted pd-sm" style="margin-bottom:14px">Founder-only. Not the customer dashboard — see <a href="../dashboard/index.html">Dashboard</a> for that.</p>
+    <div class="pd-field"><label class="pd-label">Admin token</label><input class="pd-input" id="token" type="password"></div>
+    <button class="pd-btn pd-btn--primary pd-btn--block" id="enter">Enter</button>
+    <p class="pd-help" id="gate-err" style="color:var(--pd-danger)"></p>
+  </div>
+  <div id="wrap" class="wrap pd-hidden"></div>
+  <script src="../assets/shared/ui/pd-core.js"></script>
+  <script src="../assets/shared/ui/pd-ui.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

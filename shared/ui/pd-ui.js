@@ -1,4 +1,4 @@
-/* PasteDeck UI helpers — toast, modal, confirm, menu. Depends on pd-core.js + pd.css. */
+/* PasteBoard UI helpers — toast, modal, confirm, menu. Depends on pd-core.js + pd.css. */
 (function (g) {
   'use strict';
   const PD = (g.PD = g.PD || {});

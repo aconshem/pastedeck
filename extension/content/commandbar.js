@@ -1,5 +1,5 @@
 /*
- * PasteDeck command bar — Spotlight-style overlay (Ctrl+Shift+Space).
+ * PasteBoard command bar — Spotlight-style overlay (Ctrl+Shift+Space).
  * Selecting a result performs its action immediately.
  */
 (function () {
@@ -13,7 +13,7 @@
 
   async function open(mode) {
     if (state.open) return close();
-    try { await PDC.ensureDb(); } catch (e) { PDC.toast('PasteDeck could not load your data.', 'error'); return; }
+    try { await PDC.ensureDb(); } catch (e) { PDC.toast('PasteBoard could not load your data.', 'error'); return; }
     if (!PD.flags.get('commandBar')) return;
     state = { open: true, items: [], sel: 0, mode: mode === 'task' ? 'task' : 'search' };
     build();
@@ -30,8 +30,8 @@
     el.className = 'cb-back';
     const desk = PD.desks.active();
     el.innerHTML =
-      '<div class="cb" role="dialog" aria-label="PasteDeck command bar">' +
-      '<div class="cb-in">' + PD.icon('search', 18) + '<input type="text" spellcheck="false" autocomplete="off" aria-label="Search PasteDeck"><span class="cb-mode" hidden></span></div>' +
+      '<div class="cb" role="dialog" aria-label="PasteBoard command bar">' +
+      '<div class="cb-in">' + PD.icon('search', 18) + '<input type="text" spellcheck="false" autocomplete="off" aria-label="Search PasteBoard"><span class="cb-mode" hidden></span></div>' +
       '<div class="cb-list" role="listbox"></div>' +
       '<div class="cb-foot"><span><kbd>↑</kbd> <kbd>↓</kbd> move</span><span><kbd>↵</kbd> run</span><span><kbd>Esc</kbd> close</span><span class="sp">' + esc(desk ? desk.name : '') + '</span></div></div>';
     layer.appendChild(el);
@@ -120,6 +120,7 @@
       case 'new-task': open('task'); break;
       case 'new-capture': case 'new-paste': PDC.blueprint.record({ kind: id === 'new-capture' ? 'capture' : 'paste', deskId: desk && desk.id }); break;
       case 'end-session': { const s = PD.sessions.active(); if (s) { PD.sessions.end(s.id); PDC.toast('Session ended'); } else PDC.toast('No active session'); break; }
+      case 'new-lead': PDC.toast('Open the PasteBoard toolbar icon → Leads tab to paste in a reply.'); break;
       case 'resume-auto': PD.desks.resumeAuto(); PDC.toast('Automatic desk detection is on'); break;
       case 'open-dashboard': PDC.send({ type: 'PD_OPEN', page: 'dashboard' }); break;
       case 'devices': PDC.send({ type: 'PD_OPEN', page: 'devices' }); break;

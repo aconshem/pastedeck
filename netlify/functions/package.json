@@ -1,0 +1,8 @@
+{
+  "name": "pasteboard-functions",
+  "private": true,
+  "description": "PasteBoard MVP backend (accounts, device approval, admin stats). Node's built-in crypto only — no auth library dependency. @netlify/blobs is the data store in production; functions fall back to a local JSON file (see _lib/store.js) when no Netlify deploy context is available, e.g. while testing with plain Node.",
+  "dependencies": {
+    "@netlify/blobs": "^11.0.0"
+  }
+}

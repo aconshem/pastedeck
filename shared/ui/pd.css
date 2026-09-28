@@ -1,4 +1,4 @@
-/* PasteDeck design system — flat, quiet, keyboard-first. No gradients, no glass. */
+/* PasteBoard design system — flat, quiet, keyboard-first. No gradients, no glass. */
 @font-face {
   font-family: 'Inter';
   font-style: normal;
@@ -65,11 +65,11 @@ body.pd {
 .pd-btn:hover { background: var(--pd-hover); }
 .pd-btn:active { transform: translateY(1px); }
 .pd-btn:disabled, .pd-btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
-.pd-btn--primary { background: var(--pd-primary); color: var(--pd-primary-text); border-color: var(--pd-primary); }
-.pd-btn--primary:hover { background: #1f2937; border-color: #1f2937; }
+.pd-btn.pd-btn--primary, a.pd-btn.pd-btn--primary { background: var(--pd-primary); color: var(--pd-primary-text); border-color: var(--pd-primary); }
+.pd-btn.pd-btn--primary:hover, a.pd-btn.pd-btn--primary:hover { background: #1f2937; border-color: #1f2937; }
 .pd-btn--ghost { background: transparent; border-color: transparent; }
 .pd-btn--ghost:hover { background: var(--pd-hover); }
-.pd-btn--danger { color: var(--pd-danger); }
+.pd-btn.pd-btn--danger, a.pd-btn.pd-btn--danger { color: var(--pd-danger); }
 .pd-btn--danger:hover { background: var(--pd-danger-bg); border-color: #FDA29B; }
 .pd-btn--sm { height: 28px; padding: 0 10px; font-size: 12px; }
 .pd-btn--lg { height: 42px; padding: 0 20px; font-size: 14px; }
@@ -94,6 +94,12 @@ body.pd {
 .pd-check { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
 .pd-check input { width: 15px; height: 15px; accent-color: #111; margin: 0; }
 .pd-help { font-size: 12px; color: var(--pd-muted); margin-top: 4px; }
+
+/* Password field with a Show/Hide toggle */
+.pd-pw-wrap { position: relative; }
+.pd-pw-wrap input { padding-right: 56px; }
+.pd-pw-toggle { position: absolute; right: 4px; top: 4px; bottom: 4px; padding: 0 8px; font: 500 12px var(--pd-font); color: var(--pd-muted); background: none; border: 0; border-radius: 5px; cursor: pointer; }
+.pd-pw-toggle:hover { background: var(--pd-hover); color: var(--pd-text); }
 
 /* Switch */
 .pd-switch { position: relative; display: inline-block; width: 34px; height: 20px; flex: none; }

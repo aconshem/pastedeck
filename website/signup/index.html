@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Create your account · PasteBoard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="../assets/shared/icons/icon-32.png">
+  <link rel="stylesheet" href="../assets/shared/ui/pd.css">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body class="pd">
+  <main class="auth">
+    <div class="auth__card" style="max-width:440px">
+      <a href="../landing/index.html" class="brand"><img src="../assets/shared/icons/icon-48.png" alt="" width="26" height="26" style="border-radius:7px">PasteBoard</a>
+
+      <div class="pd-tabs" style="margin:18px 0">
+        <button class="pd-tab" data-mode="owner" aria-selected="true">Create an account</button>
+        <button class="pd-tab" data-mode="join" aria-selected="false">Join a team</button>
+      </div>
+
+      <section id="view-owner">
+        <h1>Create your PasteBoard account</h1>
+        <p class="auth__sub" id="plan-note">Starting on the Free plan. <a href="../landing/index.html#pricing">Change plan</a></p>
+        <form id="owner-form" novalidate>
+          <div class="pd-field-row"><div class="pd-field"><label class="pd-label" for="o-username">Username</label><input class="pd-input" id="o-username" required></div>
+          <div class="pd-field"><label class="pd-label" for="o-name">Full name</label><input class="pd-input" id="o-name" required></div></div>
+          <div class="pd-field"><label class="pd-label" for="o-email">Email</label><input class="pd-input" id="o-email" type="email" required></div>
+          <div class="pd-field"><label class="pd-label" for="o-password">Password</label><div class="pd-pw-wrap"><input class="pd-input" id="o-password" type="password" minlength="8" required><button class="pd-pw-toggle" type="button" data-pw-toggle="o-password">Show</button></div><div class="pd-help">At least 8 characters. You\u2019re the super admin / account owner \u2014 this is what you\u2019ll approve new devices with.</div></div>
+          <div id="card-block" class="pd-hidden">
+            <div class="pd-field"><label class="pd-label">Card details</label><input class="pd-input" placeholder="4242 4242 4242 4242" disabled>
+              <div class="pd-field-row" style="margin-top:8px"><input class="pd-input" placeholder="MM / YY" disabled><input class="pd-input" placeholder="CVC" disabled></div>
+              <div class="pd-help">Card payments only, billed in USD. Your 14-day trial starts today \u2014 nothing is charged until it ends. (Card processing isn\u2019t connected yet in this preview, so no real card is needed or stored.)</div></div>
+          </div>
+          <button class="pd-btn pd-btn--primary pd-btn--lg pd-btn--block" type="submit" id="o-submit">Create account</button>
+          <p class="pd-help" id="o-err" style="color:var(--pd-danger)" role="alert"></p>
+        </form>
+      </section>
+
+      <section id="view-join" hidden>
+        <h1>Join a PasteBoard team</h1>
+        <p class="auth__sub">Ask your account owner for their sign-up email, then request access below. They\u2019ll need to approve it before you can sign in.</p>
+        <form id="join-form" novalidate>
+          <div class="pd-field"><label class="pd-label" for="j-owner">Account owner\u2019s email</label><input class="pd-input" id="j-owner" type="email" required placeholder="owner@company.com"></div>
+          <div class="pd-field-row"><div class="pd-field"><label class="pd-label" for="j-username">Username</label><input class="pd-input" id="j-username" required></div>
+          <div class="pd-field"><label class="pd-label" for="j-name">Full name</label><input class="pd-input" id="j-name" required></div></div>
+          <div class="pd-field"><label class="pd-label" for="j-email">Your email</label><input class="pd-input" id="j-email" type="email" required></div>
+          <div class="pd-field"><label class="pd-label" for="j-password">Password</label><div class="pd-pw-wrap"><input class="pd-input" id="j-password" type="password" minlength="8" required><button class="pd-pw-toggle" type="button" data-pw-toggle="j-password">Show</button></div></div>
+          <button class="pd-btn pd-btn--primary pd-btn--lg pd-btn--block" type="submit" id="j-submit">Request access</button>
+          <p class="pd-help" id="j-err" style="color:var(--pd-danger)" role="alert"></p>
+        </form>
+      </section>
+
+      <section id="view-sent" hidden>
+        <h1>Request sent</h1>
+        <p class="auth__sub" id="sent-msg"></p>
+        <a class="pd-btn pd-btn--block" href="../login/index.html">Back to login</a>
+      </section>
+
+      <p class="auth__foot">Already have an account? <a href="../login/index.html">Log in</a></p>
+    </div>
+  </main>
+  <script src="../assets/api.js"></script>
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const params = new URLSearchParams(location.search);
+      const plan = ['free', 'freeplus', 'premium', 'premiumpro'].includes(params.get('plan')) ? params.get('plan') : 'free';
+      const PRICE = { free: 'Free plan', freeplus: 'Free + Email plan', premium: 'Premium \u2014 $20 one-time, 14-day free trial', premiumpro: 'Premium Pro \u2014 $40 one-time, 14-day free trial' };
+      $('plan-note').innerHTML = plan === 'free' ? 'Starting on the Free plan. <a href="../landing/index.html#pricing">Change plan</a>' : 'Starting on ' + PRICE[plan] + '. <a href="../landing/index.html#pricing">Change plan</a>';
+      $('card-block').classList.toggle('pd-hidden', plan !== 'premium' && plan !== 'premiumpro');
+
+      const showMode = (m) => {
+        document.querySelectorAll('.pd-tab').forEach((t) => t.setAttribute('aria-selected', t.dataset.mode === m));
+        $('view-owner').hidden = m !== 'owner'; $('view-join').hidden = m !== 'join';
+      };
+      document.querySelectorAll('.pd-tab').forEach((t) => t.onclick = () => showMode(t.dataset.mode));
+      if (params.get('mode') === 'join') showMode('join');
+      document.querySelectorAll('[data-pw-toggle]').forEach((btn) => {
+        btn.onclick = () => { const input = $(btn.dataset.pwToggle); const show = input.type === 'password'; input.type = show ? 'text' : 'password'; btn.textContent = show ? 'Hide' : 'Show'; };
+      });
+
+      $('owner-form').onsubmit = async (e) => {
+        e.preventDefault(); $('o-err').textContent = ''; $('o-submit').disabled = true;
+        try {
+          const data = await PBApi.signup({
+            username: $('o-username').value.trim(), name: $('o-name').value.trim(),
+            email: $('o-email').value.trim(), password: $('o-password').value, plan,
+            cardCollected: plan === 'premium' || plan === 'premiumpro',
+          });
+          PBApi.setSession(data);
+          location.href = '../dashboard/index.html';
+        } catch (err) { $('o-err').textContent = err.message; } finally { $('o-submit').disabled = false; }
+      };
+      $('join-form').onsubmit = async (e) => {
+        e.preventDefault(); $('j-err').textContent = ''; $('j-submit').disabled = true;
+        try {
+          const r = await PBApi.deviceRequest({ ownerEmail: $('j-owner').value.trim(), username: $('j-username').value.trim(), name: $('j-name').value.trim(), email: $('j-email').value.trim(), password: $('j-password').value });
+          $('sent-msg').textContent = r.message || 'Request sent. Waiting for approval.';
+          $('view-join').hidden = true; $('view-sent').hidden = false;
+        } catch (err) { $('j-err').textContent = err.message; } finally { $('j-submit').disabled = false; }
+      };
+    })();
+  </script>
+</body>
+</html>
