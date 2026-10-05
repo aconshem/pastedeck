@@ -39,6 +39,7 @@
     deviceApprove: (deviceId) => call('device-approve', { body: { deviceId }, auth: true }),
     deviceReject: (deviceId) => call('device-reject', { body: { deviceId }, auth: true }),
     teamUpdate: (b) => call('team-update', { body: b, auth: true }),
+    teamAnalytics: () => call('analytics', { auth: true }),
     trackInterest: (b) => call('track-interest', { body: b }).catch(() => {}), // best-effort; never blocks the UI
   };
   g.PBApi = PBApi;

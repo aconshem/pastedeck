@@ -1,3 +1,9 @@
 /            /landing/index.html   200
 /login       /login/index.html     200
+/signup      /signup/index.html    200
 /dashboard   /dashboard/index.html 200
+/admin       /admin/index.html     200
+/pricing     /pricing/index.html   200
+/terms       /terms/index.html     200
+/privacy     /privacy/index.html   200
+/refunds     /refunds/index.html   200

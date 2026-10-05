@@ -142,12 +142,6 @@
      Set once in Settings, reused in every snippet as {{standard.key}}. For facts that are true regardless of
      who you're replying to (salary figure, office location, working hours) — unlike session data, which is
      per-candidate and expires. */
-  PD.STANDARD_DEFAULTS = [
-    { key: 'salary', label: 'Salary figure', value: '' },
-    { key: 'location', label: 'Job location', value: '' },
-    { key: 'workinghours', label: 'Working hours', value: '' },
-    { key: 'package', label: 'Package / benefits', value: '' },
-  ];
   PD.standards = {
     all() {
       const s = db.get('settings').standardFields;

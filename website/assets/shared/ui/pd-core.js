@@ -57,12 +57,31 @@
   /* Estimated seconds saved per action (used for the analytics estimate). */
   PD.TIME_SAVED = { snippet: 20, autofillField: 6, captureField: 5 };
 
+  /* Facts that don't change per candidate — used in snippets as {{standard.salary}} etc. Lives here (not in
+     pd-domain.js) because pd-storage.js's seed() needs it, and storage must not depend on the domain layer. */
+  PD.STANDARD_DEFAULTS = [
+    { key: 'salary', label: 'Salary figure', value: '' },
+    { key: 'location', label: 'Job location', value: '' },
+    { key: 'workinghours', label: 'Working hours', value: '' },
+    { key: 'package', label: 'Package / benefits', value: '' },
+  ];
+
   PD.SESSION_TEMPLATE = ['Full Name', 'Passport Number', 'Phone', 'ID Number', 'Nationality', 'Salary', 'Medical Status', 'Date of Birth'];
   PD.SESSION_PRESETS = [
     { id: '15m', label: '15 minutes', ms: 15 * 60000 },
     { id: '30m', label: '30 minutes', ms: 30 * 60000 },
     { id: '1h',  label: '1 hour',     ms: 60 * 60000 },
     { id: 'eod', label: 'End of day', ms: null },
+  ];
+  /* Snooze durations for task reminders — a notification, the popup, and the dashboard all offer the same list. */
+  PD.SNOOZE_PRESETS = [
+    { id: '5m',  label: '5 minutes',  ms: 5 * 60000 },
+    { id: '10m', label: '10 minutes', ms: 10 * 60000 },
+    { id: '15m', label: '15 minutes', ms: 15 * 60000 },
+    { id: '30m', label: '30 minutes', ms: 30 * 60000 },
+    { id: '1h',  label: '1 hour',     ms: 60 * 60000 },
+    { id: '3h',  label: '3 hours',    ms: 3 * 60 * 60000 },
+    { id: 'tomorrow', label: 'Tomorrow 9:00 AM', special: 'tomorrow' },
   ];
 
   /* ---------- utilities ---------- */

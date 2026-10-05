@@ -38,6 +38,9 @@
       </section>
     </div>
   </main>
+  <footer class="footer"><div class="container"><span>&copy; PasteBoard</span><nav aria-label="Legal"><a href="../pricing/index.html">Pricing</a><a href="../terms/index.html">Terms</a><a href="../privacy/index.html">Privacy</a><a href="../refunds/index.html">Refunds</a></nav></div></footer>
+  <script src="../assets/shared/ui/pd-core.js"></script>
+  <script src="../assets/shared/ui/pd-storage.js"></script>
   <script src="../assets/api.js"></script>
   <script>
     (function () {
@@ -46,12 +49,30 @@
       const next = '../dashboard/index.html';
       const show = (id) => ['view-login', 'view-done'].forEach((v) => ($(v).hidden = v !== id));
 
+      // When opened from the extension (its "Log in" / "Link this device" button), relay the resulting session
+      // into the extension's own local storage via the website<->extension bridge, so the extension can use it
+      // to push usage analytics and show "linked as" status — without ever showing a login form itself.
+      async function linkExtension(s) {
+        if (params.get('source') !== 'extension') return null;
+        try {
+          await PD.db.init({ adapter: 'web' });
+          if (PD.db.adapter.name !== 'extension-bridge') return false; // opened without the extension present
+          await PD.db.set('account', { token: s.token, accountEmail: s.accountEmail, deviceId: s.deviceId, role: s.role, name: s.name || s.accountEmail, linkedAt: Date.now() });
+          return true;
+        } catch (e) { return false; }
+      }
+
       const existing = PBApi.session();
       if (existing && params.get('switch') !== '1') done(existing);
-      function done(s) {
+      async function done(s) {
         $('done-msg').textContent = 'Signed in as ' + (s.name || s.accountEmail) + (s.role === 'owner' ? ' (account owner)' : '');
         $('go').href = next;
-        $('ext-note').hidden = params.get('source') !== 'extension';
+        if (params.get('source') === 'extension') {
+          $('ext-note').hidden = false;
+          $('ext-note').textContent = 'Linking to your extension\u2026';
+          const linked = await linkExtension(s);
+          $('ext-note').textContent = linked ? 'Linked to your extension on this device. You can close this tab.' : 'Could not link to the extension automatically \u2014 open the extension and try again, or just close this tab.';
+        }
         show('view-done');
       }
       $('login-form').onsubmit = async (e) => {

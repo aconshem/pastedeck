@@ -11,10 +11,13 @@
   function render() {
     const s = db.get('settings');
     const plan = PD.plan.id();
+    const acct = db.get('account');
     root.innerHTML =
       '<div class="pd-card card"><h2>Account</h2>' +
-      '<div class="item"><div>Log in and manage your account<small>Opens the PasteBoard website. The extension itself never shows a login form.</small></div><div class="ctl auto"><button class="pd-btn" data-a="signup">Create account</button> <button class="pd-btn" data-a="login">Log in</button> <button class="pd-btn" data-a="devices">Manage devices</button></div></div>' +
-      '<div class="item"><div>Dashboard<small>Team, company details, analytics.</small></div><div class="ctl auto"><button class="pd-btn" data-a="dashboard">Open dashboard</button></div></div></div>' +
+      (acct
+        ? '<div class="item"><div>Linked as <b>' + esc(acct.name) + '</b> (' + (acct.role === 'owner' ? 'owner' : 'member') + ')<small>' + esc(acct.accountEmail) + ' \u00b7 usage analytics sync to this account every few minutes.</small></div><div class="ctl auto"><button class="pd-btn pd-btn--danger" data-a="unlink">Unlink this device</button></div></div>'
+        : '<div class="item"><div>Not linked to an account yet<small>Linking lets the owner see this device in Team &amp; Devices and in Analytics. Log in or sign up on the website \u2014 the extension itself never shows a login form.</small></div><div class="ctl auto"><button class="pd-btn" data-a="signup">Create account</button> <button class="pd-btn" data-a="login">Log in</button></div></div>') +
+      '<div class="item"><div>Dashboard<small>Team, company details, analytics.</small></div><div class="ctl auto"><button class="pd-btn" data-a="dashboard">Open dashboard</button> <button class="pd-btn" data-a="devices">Manage devices</button></div></div></div>' +
 
       '<div class="pd-card card"><h2>Standard values</h2>' +
       '<div class="item" style="display:block"><div style="margin-bottom:10px">Facts that are true no matter who you\'re replying to — salary, location, working hours. Use them in any snippet as <code>{{standard.salary}}</code> etc. ' +
@@ -80,6 +83,7 @@
     const b = e.target.closest('[data-a]'); if (!b) return;
     const a = b.dataset.a;
     if (['login', 'devices', 'dashboard', 'signup'].indexOf(a) >= 0) chrome.runtime.sendMessage({ type: 'PD_OPEN', page: a });
+    else if (a === 'unlink') { if (await PD.ui.confirm('Unlink this device? It will stop sending usage analytics until you log in again.', { confirmLabel: 'Unlink' })) { await chrome.runtime.sendMessage({ type: 'PD_UNLINK' }); render(); } }
     else if (a === 'shortcuts') chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
     else if (a === 'clear-history') { if (await PD.ui.confirm('Clear clipboard history? Pinned items are kept.', { danger: true, confirmLabel: 'Clear' })) { PD.history.clear(true); PD.ui.toast('History cleared'); } }
     else if (a === 'export') U.download('pasteboard-backup-' + U.dayKey() + '.json', JSON.stringify(db.exportAll(), null, 2));

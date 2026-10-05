@@ -14,10 +14,10 @@
   if (PD.db && PD.db.NAMESPACES) return; // already loaded (e.g. content script injected twice)
   const U = PD.util;
 
-  const NAMESPACES = ['meta', 'desks', 'snippets', 'sessions', 'blueprints', 'tasks', 'history', 'files', 'company', 'team', 'settings', 'analytics', 'devices', 'leads', 'outbox'];
+  const NAMESPACES = ['meta', 'desks', 'snippets', 'sessions', 'blueprints', 'tasks', 'history', 'files', 'company', 'team', 'settings', 'analytics', 'devices', 'leads', 'account', 'outbox'];
   const DEFAULTS = () => ({
     meta: {}, desks: [], snippets: [], sessions: [], blueprints: [], tasks: [], history: [], files: [],
-    company: {}, team: {}, settings: {}, analytics: { days: {} }, devices: [], leads: [], outbox: [],
+    company: {}, team: {}, settings: {}, analytics: { days: {} }, devices: [], leads: [], account: null, outbox: [],
   });
   const K = (ns) => 'pd:' + ns;
 
@@ -175,12 +175,12 @@
     },
 
     exportAll() {
-      const data = {}; NAMESPACES.forEach((ns) => { if (ns !== 'outbox') data[ns] = db.cache[ns]; });
+      const data = {}; NAMESPACES.forEach((ns) => { if (ns !== 'outbox' && ns !== 'account') data[ns] = db.cache[ns]; });
       return { app: 'pasteboard', schemaVersion: PD.SCHEMA_VERSION, exportedAt: new Date().toISOString(), data };
     },
     async importAll(obj) {
       if (!obj || obj.app !== 'pasteboard' || !obj.data) throw new Error('Not a PasteBoard export file');
-      for (const ns of NAMESPACES) { if (ns !== 'outbox' && obj.data[ns] !== undefined) { db.cache[ns] = obj.data[ns]; await db._persist(ns); } }
+      for (const ns of NAMESPACES) { if (ns !== 'outbox' && ns !== 'account' && obj.data[ns] !== undefined) { db.cache[ns] = obj.data[ns]; await db._persist(ns); } }
       NAMESPACES.forEach((ns) => db._emit(ns, 'local'));
     },
     async resetAll() {
@@ -200,58 +200,40 @@
     async del(id) { await db.adapter.remove(['pdb:' + id]); },
   };
 
-  /* ---------------- seed ---------------- */
+  /* ---------------- seed ----------------
+     A fresh install (and so a fresh account) starts genuinely empty — no sample desk, snippets or task.
+     One empty desk is created because the rest of the app assumes at least one exists (see PD.desks.remove's
+     "keep at least one desk" guard); everything else starts blank until the person adds their own. */
   PD.seed = async function (opts) {
     opts = opts || {};
     const now = Date.now();
     const meta = (r) => Object.assign({ createdAt: now, updatedAt: now, rev: 1 }, r);
-    const D = { rec: 'desk_recruitment', mail: 'desk_email', visa: 'desk_visa' };
+    const homeDeskId = 'desk_' + U.uid().slice(3);
 
-    db.cache.desks = [
-      meta({ id: D.rec, name: 'Recruitment Desk', urlPatterns: ['web.whatsapp.com'], shared: true }),
-      meta({ id: D.mail, name: 'Email Desk', urlPatterns: ['mail.google.com'], shared: false }),
-      meta({ id: D.visa, name: 'Visa Desk', urlPatterns: ['visa.example.com'], shared: false }),
-    ];
-    db.cache.snippets = [
-      meta({ id: 'snip_salary', deskId: D.rec, title: 'Salary reply', category: 'Replies', favorite: true, shared: false, shortcut: ';sal', uses: 0,
-        body: 'Hi, the monthly salary for this position is {{standard.salary}}. Let me know if you would like to proceed.' }),
-      meta({ id: 'snip_office', deskId: D.rec, title: 'Office location', category: 'Company', favorite: true, shared: true, shortcut: ';loc', uses: 0,
-        body: 'Our office is at {{company.address}}.\nMap: {{company.maps}}' }),
-      meta({ id: 'snip_req', deskId: D.rec, title: 'Requirements checklist', category: 'Replies', favorite: false, shared: false, shortcut: ';req', uses: 0,
-        body: 'Please send us:\n1. A clear copy of your passport\n2. A passport-size photo\n3. A full-body photo\n4. Your phone number' }),
-      meta({ id: 'snip_interview', deskId: D.rec, title: 'Interview invitation', category: 'Replies', favorite: false, shared: false, shortcut: ';int', uses: 0,
-        body: 'Hello, you are invited for an interview at {{company.address}}. Please bring your original passport and ID.' }),
-      meta({ id: 'snip_thanks', deskId: null, title: 'Thanks, will follow up', category: 'General', favorite: false, shared: false, shortcut: ';ty', uses: 0,
-        body: "Thank you. I'll get back to you shortly." }),
-      meta({ id: 'snip_sig', deskId: D.mail, title: 'Email signature', category: 'Email', favorite: false, shared: false, shortcut: ';sig', uses: 0,
-        body: 'Kind regards,\n{{company.name}}\n{{company.whatsapp}}' }),
-    ];
+    db.cache.desks = [ meta({ id: homeDeskId, name: 'My Desk', urlPatterns: [], shared: false }) ];
+    db.cache.snippets = [];
     db.cache.sessions = [];
     db.cache.blueprints = [];
     db.cache.files = [];
     db.cache.history = [];
     db.cache.leads = [];
-    db.cache.tasks = [
-      meta({ id: 'task_welcome', title: 'Try the command bar: press Ctrl+Shift+Space on any page', dueAt: null, recurrence: null, snoozedUntil: null, done: false, notifiedAt: null }),
-    ];
-    db.cache.company = {
-      name: 'Your Company Ltd', logoId: null, address: '12 Example Street, Nairobi', mapsLink: 'https://maps.google.com/?q=Nairobi',
-      whatsapp: '+254 700 000000', email: 'hello@example.com',
-    };
+    db.cache.tasks = [];
+    db.cache.company = { name: '', logoId: null, address: '', mapsLink: '', whatsapp: '', email: '' };
     db.cache.team = {
       meId: 'usr_me',
       /* Only the owner is seeded. Everyone else joins through a device/user request that the owner approves
          (see PD.team.request / approve) — there is no sample team on a production install. */
-      members: [ meta({ id: 'usr_me', name: 'You', email: 'you@example.com', role: 'owner', status: 'active', analyticsAccess: true }) ],
+      members: [ meta({ id: 'usr_me', name: 'You', email: '', role: 'owner', status: 'active', analyticsAccess: true }) ],
     };
     db.cache.settings = {
-      activeDeskId: D.rec, activeSessionId: null, manualPin: false, autoDetect: true,
+      activeDeskId: homeDeskId, activeSessionId: null, manualPin: false, autoDetect: true,
       clipboardHistory: true, ignoreHosts: [], notifications: true, floatingPill: true, textExpansion: true,
       defaultExpiry: '1h', plan: PD.CONFIG.defaultPlan, siteUrl: PD.CONFIG.siteUrl, flags: {},
       standardFields: PD.STANDARD_DEFAULTS.slice(),
     };
     db.cache.analytics = { days: {} };
     db.cache.devices = [];
+    db.cache.account = null;
     db.cache.outbox = [];
     db.cache.meta = { schemaVersion: PD.SCHEMA_VERSION, seededAt: now, installedAt: now, deviceId: U.uid('dev') };
     for (const ns of NAMESPACES) await db._persist(ns);

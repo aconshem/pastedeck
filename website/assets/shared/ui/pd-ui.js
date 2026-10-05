@@ -155,6 +155,35 @@
     });
   };
 
+  /* Explicit date/time reminder — the alternative to typing a sentence into the quick-add box.
+     ui.taskEditor({ onSaved }) */
+  ui.taskEditor = function (o) {
+    o = o || {};
+    const now = new Date(), pad = (n) => String(n).padStart(2, '0');
+    const todayStr = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+    const inHour = new Date(now.getTime() + 3600000);
+    const timeStr = pad(inHour.getHours()) + ':' + pad(inHour.getMinutes());
+    return ui.modal({
+      title: 'Set a reminder',
+      html:
+        '<div class="pd-field"><label class="pd-label">Remind me to</label><input class="pd-input" name="title" placeholder="Call the embassy"></div>' +
+        '<div class="pd-field-row"><div class="pd-field"><label class="pd-label">Date</label><input class="pd-input" type="date" name="date" value="' + todayStr + '"></div>' +
+        '<div class="pd-field"><label class="pd-label">Time</label><input class="pd-input" type="time" name="time" value="' + timeStr + '"></div></div>' +
+        '<div class="pd-field"><label class="pd-label">Repeat</label><select class="pd-select" name="recurrence"><option value="">Does not repeat</option><option value="daily">Every day</option><option value="weekdays">Every weekday</option><option value="weekly">Every week</option><option value="monthly">Every month</option></select></div>',
+      actions: [
+        { label: 'Cancel' },
+        { label: 'Set reminder', primary: true, onClick(h) {
+          const v = h.values();
+          if (!PD.util.oneLine(v.title)) return false;
+          if (!v.date || !v.time) return false;
+          const dueAt = new Date(v.date + 'T' + v.time).getTime();
+          try { PD.tasks.create({ title: PD.util.oneLine(v.title), dueAt, recurrence: v.recurrence || null }); if (o.onSaved) o.onSaved(); }
+          catch (e) { ui.fail(e); return false; }
+        } },
+      ],
+    });
+  };
+
   /* Turns a thrown domain error into a toast, with a special path for plan limits. */
   ui.fail = function (err, onUpgrade) {
     if (err && err.code === 'PLAN_LIMIT') {

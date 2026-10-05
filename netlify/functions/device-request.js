@@ -18,6 +18,7 @@ exports.handler = async (event) => {
   if (!username || !name) return bad('Username and name are required.');
   if (!EMAIL_RE.test(email)) return bad('Enter a valid email address.');
   if (password.length < 8) return bad('Password must be at least 8 characters.');
+  if (b.acceptedTerms !== true) return bad('You must accept the Terms of Service and Privacy Policy.');
 
   const account = await store.accounts.get(ownerEmail);
   if (!account) return bad('No PasteBoard account uses that owner email.', 404);
@@ -28,6 +29,7 @@ exports.handler = async (event) => {
   const device = {
     id: newId('dev'), username, name, email, passwordHash: hashPassword(password),
     role: 'member', status: 'pending', analyticsAccess: false, createdAt: Date.now(), lastLoginAt: null,
+    termsAcceptedAt: Date.now(),
     extra: activeCount >= included, // beyond the plan's included seats — flagged for the $2.5/device add-on
   };
   account.devices.push(device);

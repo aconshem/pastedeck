@@ -109,15 +109,21 @@
     if (a === 'resume-auto') { PD.desks.resumeAuto(); PD.desks.autoSwitch(S.tabUrl); renderHeader(); refreshTab(); }
     else if (a === 'open-panel') { chrome.sidePanel.open({ windowId: S.windowId }).then(() => window.close()).catch(() => toast('Could not open the side panel here.', 'error')); }
     else if (a === 'menu') {
+      const acct = db.get('account');
       PD.ui.menu(b, [
         { label: 'Open dashboard', icon: 'home', onClick: () => site('dashboard') },
         { label: 'Manage devices', icon: 'monitor', onClick: () => site('devices') },
+      ].concat(acct ? [
+        { label: 'Linked as ' + acct.name, icon: 'user', onClick: () => {} },
+        { label: 'Unlink this device', icon: 'logout', async onClick() { if (await PD.ui.confirm('Unlink this device?', { confirmLabel: 'Unlink' })) { await chrome.runtime.sendMessage({ type: 'PD_UNLINK' }); renderHeader(); } } },
+      ] : [
         { label: 'Log in', icon: 'user', onClick: () => site('login') },
         { label: 'Create account', icon: 'plus', onClick: () => site('signup') },
+      ]).concat([
         '-',
         { label: 'Settings', icon: 'settings', onClick: () => chrome.runtime.openOptionsPage() },
         { label: 'Keyboard shortcuts', icon: 'command', onClick: () => chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }) },
-      ]);
+      ]));
     }
   }
 
@@ -347,7 +353,8 @@
     ];
     const done = all.filter((t) => t.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0)).slice(0, 5);
     main.innerHTML =
-      '<div class="search">' + I('plus', 16) + '<input id="taskIn" placeholder="Call medical tomorrow 9am" autocomplete="off" aria-label="New task"><span class="pd-kbd">↵</span></div><div class="parse-prev" id="tprev"></div>' +
+      '<div class="search">' + I('plus', 16) + '<input id="taskIn" placeholder="Call medical tomorrow 9am" autocomplete="off" aria-label="New task"><span class="pd-kbd">↵</span></div>' +
+      '<div class="parse-prev" id="tprev"></div><button class="pd-btn pd-btn--ghost pd-btn--sm" data-act="set-reminder" style="margin:-6px 0 10px">' + I('clock', 13) + ' Set an exact date &amp; time instead</button>' +
       groups.filter((g) => g[1].length).map((g) => '<div class="sec-h"><span>' + g[0] + '</span></div>' + g[1].map(taskRow).join('')).join('') +
       (!open.length ? '<div class="pd-empty"><strong>Nothing to do</strong>Type a task above. Try “Call medical tomorrow 9am”.</div>' : '') +
       (done.length ? '<div class="sec-h"><span>Done</span></div>' + done.map(taskRow).join('') : '');
@@ -357,7 +364,7 @@
     const due = PD.tasks.effectiveDue(t), late = !t.done && due && due < Date.now();
     return '<div class="task"><button class="chk' + (t.done ? ' is-done' : '') + '" data-act="toggle-task" data-id="' + t.id + '" aria-label="' + (t.done ? 'Mark not done' : 'Mark done') + '">' + (t.done ? I('check', 12) : '') + '</button>' +
       '<div class="task__b"><div class="task__t' + (t.done ? ' is-done' : '') + '">' + esc(t.title) + '</div><div class="task__s' + (late ? ' is-late' : '') + '">' + (due ? U.fmtDue(due) : 'No due time') + (t.recurrence ? ' · repeats ' + t.recurrence : '') + (t.snoozedUntil && t.snoozedUntil > (t.dueAt || 0) ? ' · snoozed' : '') + '</div></div>' +
-      (t.done ? '' : '<div class="snooze-wrap" title="Snooze">' + I('clock', 15) + '<select class="mini" data-snooze="' + t.id + '" aria-label="Snooze"><option value="">Snooze</option><option value="600000">10 minutes</option><option value="3600000">1 hour</option><option value="tomorrow">Tomorrow 9:00</option></select></div>') +
+      (t.done ? '' : '<div class="snooze-wrap" title="Snooze">' + I('clock', 15) + '<select class="mini" data-snooze="' + t.id + '" aria-label="Snooze"><option value="">Snooze</option>' + PD.SNOOZE_PRESETS.map((p) => '<option value="' + (p.special || p.ms) + '">' + p.label + '</option>').join('') + '</select></div>') +
       '<button class="pd-btn pd-btn--ghost pd-btn--icon pd-btn--sm" data-act="del-task" data-id="' + t.id + '" aria-label="Delete task">' + I('trash', 13) + '</button></div>';
   }
 
@@ -501,6 +508,7 @@
         case 'del-file': if (await PD.ui.confirm('Delete this file?', { danger: true, confirmLabel: 'Delete' })) { await PD.files.remove(id); renderTab(); } break;
         case 'toggle-task': { const t = db.find('tasks', id); if (t.done) PD.tasks.reopen(id); else PD.tasks.complete(id); renderTab(); break; }
         case 'del-task': PD.tasks.remove(id); renderTab(); break;
+        case 'set-reminder': PD.ui.taskEditor({ onSaved: () => { toast('Reminder set'); renderTab(); } }); break;
         case 'new-lead': newLeadModal(); break;
         case 'del-lead': if (await PD.ui.confirm('Delete this lead?', { danger: true, confirmLabel: 'Delete' })) { PD.leads.remove(id); renderTab(); } break;
         case 'export-leads': { const ok = await copyText(PD.leads.toSpreadsheetText()); toast(ok ? 'Copied — paste it straight into Google Sheets or Excel' : 'Could not copy.', ok ? '' : 'error'); break; }

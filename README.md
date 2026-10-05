@@ -46,6 +46,7 @@ Then:
 - `http://localhost:8888/login/index.html` — email + password (the only auth method right now — see below)
 - `http://localhost:8888/dashboard/index.html` — Home / Desks / Clipboard / Analytics / Team & Devices / Company / Tasks / Settings
 - `http://localhost:8888/admin/index.html` — founder-only aggregate stats, gated by `PASTEBOARD_ADMIN_TOKEN` (see below)
+- `http://localhost:8888/pricing/index.html`, `/terms/index.html`, `/privacy/index.html`, `/refunds/index.html` — standalone legal/pricing pages (needed for payment-provider review, e.g. Paddle). `_redirects` also maps the clean paths `/pricing`, `/terms`, `/privacy`, `/refunds` on a real Netlify deploy. These are templates, not legal advice — have them reviewed before relying on them.
 
 Desks, snippets, sessions, blueprints, files, clipboard history and tasks are still local-first — the same
 `chrome.storage.local` (through the extension) or `localStorage` (this browser) data as before. Only **accounts,

@@ -64,6 +64,7 @@
     content.innerHTML = r === 'analytics' && !canSeeAnalytics() ? lockedAnalytics() : fn();
     document.title = PAGES.find((p) => p[0] === r)[1] + ' \u00b7 PasteBoard';
     hydrate();
+    if (r === 'analytics' && canSeeAnalytics()) loadTeamAnalytics();
     if (y) window.scrollTo(0, y);
   }
   function hydrate() {
@@ -144,7 +145,20 @@
       '<div class="pd-card stat"><div class="stat__l">Most used desk</div><div class="stat__v" style="font-size:20px">' + (w.desk ? esc(w.desk.name) : '\u2014') + '</div><div class="stat__s">' + (w.desk ? w.desk.count + ' actions' : 'No data') + '</div></div>' +
       '<div class="pd-card stat"><div class="stat__l">Most used snippet</div><div class="stat__v" style="font-size:20px">' + (w.snippet ? esc(w.snippet.name) : '\u2014') + '</div><div class="stat__s">' + (w.snippet ? w.snippet.count + ' uses' : 'No data') + '</div></div>' +
       '<div class="pd-card stat"><div class="stat__l">Most used website</div><div class="stat__v" style="font-size:20px">' + (w.site ? esc(w.site.key) : '\u2014') + '</div><div class="stat__s">' + (w.site ? w.site.count + ' actions' : 'No data') + '</div></div></div></div>' +
-      '<div class="block"><h2>Time saved this week: ' + U.fmtDuration(w.savedSec) + '</h2></div>';
+      '<div class="block"><h2>Time saved this week: ' + U.fmtDuration(w.savedSec) + '</h2></div>' +
+      '<div class="block"><h2>Team-wide (all linked devices)</h2><div class="pd-card pad" id="teamAnalytics"><p class="pd-muted pd-sm">Loading\u2026</p></div></div>';
+  }
+  async function loadTeamAnalytics() {
+    const box = document.getElementById('teamAnalytics'); if (!box) return;
+    try {
+      const agg = await PBApi.teamAnalytics();
+      const has = agg.days.some((d) => d.savedSec > 0);
+      const labels = agg.days.filter((_, i) => i % 4 === 3 || i === agg.days.length - 1).map((d) => new Date(d.day + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric' }));
+      box.innerHTML = '<p class="pd-sm pd-muted" style="margin-bottom:10px">Across every device linked to this account \u2014 pushed every few minutes by devices that are signed in. Only counts, never the content of what was typed or captured.</p>' +
+        (has ? '<div class="grid3" style="margin-bottom:14px"><div class="pd-card stat"><div class="stat__l">Time saved, last 30 days</div><div class="stat__v">' + U.fmtDuration(agg.savedSecLast30Days) + '</div></div></div>' +
+          '<h3 style="font-size:13px;margin-bottom:8px">By device</h3>' + agg.byDevice.map((d) => '<div class="line"><div class="grow t">' + esc(d.name) + '</div><div class="s">' + U.fmtDuration(d.savedSec) + '</div></div>').join('')
+          : empty('No synced usage yet', 'Devices start sending analytics automatically a few minutes after being linked and used.'));
+    } catch (e) { box.innerHTML = '<p class="pd-sm pd-muted">' + esc(e.message) + '</p>'; }
   }
 
   /* ---------------------------------------------------------------- Team & Devices (real backend) */
@@ -189,9 +203,15 @@
   /* ---------------------------------------------------------------- Tasks */
   function tasks() {
     const all = db.get('tasks'), open = all.filter((t) => !t.done).sort((a, b) => (PD.tasks.effectiveDue(a) || 9e15) - (PD.tasks.effectiveDue(b) || 9e15)), done = all.filter((t) => t.done).slice(-8).reverse();
-    const line = (t) => { const due = PD.tasks.effectiveDue(t), late = !t.done && due && due < Date.now(); return '<div class="line"><button class="pd-btn pd-btn--icon pd-btn--sm" data-act="toggle-task" data-id="' + t.id + '" aria-label="Toggle done">' + (t.done ? I('check', 14) : '') + '</button><div class="grow"><div class="t"' + (t.done ? ' style="text-decoration:line-through;color:var(--pd-faint)"' : '') + '>' + esc(t.title) + '</div><div class="s"' + (late ? ' style="color:var(--pd-danger)"' : '') + '>' + (due ? U.fmtDue(due) : 'No due time') + (t.recurrence ? ' \u00b7 repeats ' + t.recurrence : '') + '</div></div><button class="pd-btn pd-btn--ghost pd-btn--icon pd-btn--sm" data-act="del-task" data-id="' + t.id + '" aria-label="Delete">' + I('trash', 14) + '</button></div>'; };
-    return head('Tasks', 'Reminders that reach you as Chrome notifications. Type them the way you would say them.') +
-      '<div class="pd-card pad"><input class="pd-input" id="taskIn" placeholder="Call medical tomorrow 9am" aria-label="New task"><div class="pd-help" id="tprev">Try: \u201cSend visa documents Monday 2pm\u201d, \u201cStandup every weekday 9am\u201d, \u201cin 30 minutes check email\u201d.</div></div>' +
+    const line = (t) => {
+      const due = PD.tasks.effectiveDue(t), late = !t.done && due && due < Date.now();
+      return '<div class="line"><button class="pd-btn pd-btn--icon pd-btn--sm" data-act="toggle-task" data-id="' + t.id + '" aria-label="Toggle done">' + (t.done ? I('check', 14) : '') + '</button><div class="grow"><div class="t"' + (t.done ? ' style="text-decoration:line-through;color:var(--pd-faint)"' : '') + '>' + esc(t.title) + '</div><div class="s"' + (late ? ' style="color:var(--pd-danger)"' : '') + '>' + (due ? U.fmtDue(due) : 'No due time') + (t.recurrence ? ' \u00b7 repeats ' + t.recurrence : '') + (t.snoozedUntil && t.snoozedUntil > (t.dueAt || 0) ? ' \u00b7 snoozed' : '') + '</div></div>' +
+        (t.done ? '' : '<select class="pd-select" data-snooze="' + t.id + '" style="width:120px;height:30px;min-height:30px;font-size:12px" aria-label="Snooze"><option value="">Snooze\u2026</option>' + PD.SNOOZE_PRESETS.map((p) => '<option value="' + (p.special || p.ms) + '">' + p.label + '</option>').join('') + '</select>') +
+        '<button class="pd-btn pd-btn--ghost pd-btn--icon pd-btn--sm" data-act="del-task" data-id="' + t.id + '" aria-label="Delete">' + I('trash', 14) + '</button></div>';
+    };
+    return head('Tasks', 'Reminders that reach you as Chrome notifications. Type them the way you would say them, or set an exact date and time.') +
+      '<div class="pd-card pad"><input class="pd-input" id="taskIn" placeholder="Call medical tomorrow 9am" aria-label="New task"><div class="pd-help" id="tprev">Try: \u201cSend visa documents Monday 2pm\u201d, \u201cStandup every weekday 9am\u201d, \u201cin 30 minutes check email\u201d.</div>' +
+      '<button class="pd-btn pd-btn--ghost pd-btn--sm" data-act="set-reminder" style="margin-top:10px">' + I('clock', 13) + ' Set an exact date &amp; time instead</button></div>' +
       '<div class="block"><h2>Open (' + open.length + ')</h2><div class="pd-card">' + (open.length ? open.map(line).join('') : empty('All clear', 'Nothing left to do.')) + '</div></div>' + (done.length ? '<div class="block"><h2>Done</h2><div class="pd-card">' + done.map(line).join('') + '</div></div>' : '');
   }
 
@@ -224,6 +244,7 @@
   });
   content.addEventListener('change', async (e) => {
     const t = e.target;
+    if (t.dataset.snooze) { if (t.value) { PD.tasks.snooze(t.dataset.snooze, t.value === 'tomorrow' ? 'tomorrow' : +t.value); toast('Snoozed'); render(); } return; }
     if (t.dataset.stdLabel !== undefined || t.dataset.stdValue !== undefined) {
       if (!canManage()) { fail(new Error('Only the account owner or an admin can change standard values.')); render(); return; }
       const i = +(t.dataset.stdLabel !== undefined ? t.dataset.stdLabel : t.dataset.stdValue);
@@ -280,6 +301,7 @@
       case 'rm-img': await PD.files.remove(id); render(); break;
       case 'toggle-task': { const t = db.find('tasks', id); if (t.done) PD.tasks.reopen(id); else PD.tasks.complete(id); render(); break; }
       case 'del-task': PD.tasks.remove(id); render(); break;
+      case 'set-reminder': PD.ui.taskEditor({ onSaved: () => { toast('Reminder set'); render(); } }); break;
       case 'export': U.download('pasteboard-backup-' + U.dayKey() + '.json', JSON.stringify(db.exportAll(), null, 2)); break;
       case 'import': document.getElementById('impIn').click(); break;
       case 'reset': if (await PD.ui.confirm('Delete all local PasteBoard data on this device and start again? (Your account and team on the server are unaffected.)', { danger: true, confirmLabel: 'Delete everything', title: 'Reset local data' })) { await db.resetAll(); render(); toast('Reset complete'); } break;

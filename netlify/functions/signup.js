@@ -18,6 +18,7 @@ exports.handler = async (event) => {
   if (!username || !name) return bad('Username and name are required.');
   if (!EMAIL_RE.test(email)) return bad('Enter a valid email address.');
   if (password.length < 8) return bad('Password must be at least 8 characters.');
+  if (b.acceptedTerms !== true) return bad('You must accept the Terms of Service and Privacy Policy.');
   if (await store.accounts.get(email)) return bad('An account with that email already exists.', 409);
 
   const now = Date.now();
@@ -29,6 +30,7 @@ exports.handler = async (event) => {
     // now (no processor connected yet — see docs/architecture.md), so nothing is actually charged here.
     trial: isPaid ? { startedAt: now, endsAt: now + 14 * 86400000 } : null,
     billing: { cardCollected: !!b.cardCollected, chargedAt: null },
+    termsAcceptedAt: now,
     devices: [{
       id: newId('dev'), username, name, email, passwordHash: hashPassword(password),
       role: 'owner', status: 'active', analyticsAccess: true, createdAt: now, lastLoginAt: now,
@@ -36,5 +38,5 @@ exports.handler = async (event) => {
   };
   await store.accounts.save(account);
   const token = signToken({ accountEmail: email, deviceId: account.devices[0].id, role: 'owner' });
-  return ok({ token, accountEmail: email, deviceId: account.devices[0].id, role: 'owner', plan, trial: account.trial });
+  return ok({ token, accountEmail: email, deviceId: account.devices[0].id, role: 'owner', name, plan, trial: account.trial });
 };

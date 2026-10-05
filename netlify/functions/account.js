@@ -17,6 +17,6 @@ exports.handler = async (event) => {
     includedDevices: isFinite(included) ? included : null,
     extraDevicePriceUSD: 2.5,
     you: { deviceId: me.id, name: me.name, role: me.role, analyticsAccess: !!me.analyticsAccess },
-    devices: account.devices.map((d) => ({ id: d.id, username: d.username, name: d.name, email: d.email, role: d.role, status: d.status, analyticsAccess: !!d.analyticsAccess, lastLoginAt: d.lastLoginAt, extra: !!d.extra })),
+    devices: account.devices.map((d) => ({ id: d.id, username: d.username, name: d.name, email: d.email, role: d.role, status: d.status, analyticsAccess: !!d.analyticsAccess, lastLoginAt: d.lastLoginAt, lastActive: d.lastActive || null, extra: !!d.extra })),
   });
 };

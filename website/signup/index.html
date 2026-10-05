@@ -25,12 +25,13 @@
           <div class="pd-field-row"><div class="pd-field"><label class="pd-label" for="o-username">Username</label><input class="pd-input" id="o-username" required></div>
           <div class="pd-field"><label class="pd-label" for="o-name">Full name</label><input class="pd-input" id="o-name" required></div></div>
           <div class="pd-field"><label class="pd-label" for="o-email">Email</label><input class="pd-input" id="o-email" type="email" required></div>
-          <div class="pd-field"><label class="pd-label" for="o-password">Password</label><div class="pd-pw-wrap"><input class="pd-input" id="o-password" type="password" minlength="8" required><button class="pd-pw-toggle" type="button" data-pw-toggle="o-password">Show</button></div><div class="pd-help">At least 8 characters. You\u2019re the super admin / account owner \u2014 this is what you\u2019ll approve new devices with.</div></div>
+          <div class="pd-field"><label class="pd-label" for="o-password">Password</label><div class="pd-pw-wrap"><input class="pd-input" id="o-password" type="password" minlength="8" required><button class="pd-pw-toggle" type="button" data-pw-toggle="o-password">Show</button></div><div class="pd-help">At least 8 characters. You&rsquo;re the super admin / account owner &mdash; this is what you&rsquo;ll approve new devices with.</div></div>
           <div id="card-block" class="pd-hidden">
             <div class="pd-field"><label class="pd-label">Card details</label><input class="pd-input" placeholder="4242 4242 4242 4242" disabled>
               <div class="pd-field-row" style="margin-top:8px"><input class="pd-input" placeholder="MM / YY" disabled><input class="pd-input" placeholder="CVC" disabled></div>
-              <div class="pd-help">Card payments only, billed in USD. Your 14-day trial starts today \u2014 nothing is charged until it ends. (Card processing isn\u2019t connected yet in this preview, so no real card is needed or stored.)</div></div>
+              <div class="pd-help">Card payments only, billed in USD. Your 14-day trial starts today &mdash; nothing is charged until it ends. (Card processing isn&rsquo;t connected yet in this preview, so no real card is needed or stored.)</div></div>
           </div>
+          <label class="pd-check" style="margin-bottom:14px;align-items:flex-start"><input type="checkbox" id="o-terms" required style="margin-top:3px">&nbsp;I agree to the <a href="../terms/index.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="../privacy/index.html" target="_blank" rel="noopener">Privacy Policy</a></label>
           <button class="pd-btn pd-btn--primary pd-btn--lg pd-btn--block" type="submit" id="o-submit">Create account</button>
           <p class="pd-help" id="o-err" style="color:var(--pd-danger)" role="alert"></p>
         </form>
@@ -38,13 +39,14 @@
 
       <section id="view-join" hidden>
         <h1>Join a PasteBoard team</h1>
-        <p class="auth__sub">Ask your account owner for their sign-up email, then request access below. They\u2019ll need to approve it before you can sign in.</p>
+        <p class="auth__sub">Ask your account owner for their sign-up email, then request access below. They&rsquo;ll need to approve it before you can sign in.</p>
         <form id="join-form" novalidate>
-          <div class="pd-field"><label class="pd-label" for="j-owner">Account owner\u2019s email</label><input class="pd-input" id="j-owner" type="email" required placeholder="owner@company.com"></div>
+          <div class="pd-field"><label class="pd-label" for="j-owner">Account owner&rsquo;s email</label><input class="pd-input" id="j-owner" type="email" required placeholder="owner@company.com"></div>
           <div class="pd-field-row"><div class="pd-field"><label class="pd-label" for="j-username">Username</label><input class="pd-input" id="j-username" required></div>
           <div class="pd-field"><label class="pd-label" for="j-name">Full name</label><input class="pd-input" id="j-name" required></div></div>
           <div class="pd-field"><label class="pd-label" for="j-email">Your email</label><input class="pd-input" id="j-email" type="email" required></div>
           <div class="pd-field"><label class="pd-label" for="j-password">Password</label><div class="pd-pw-wrap"><input class="pd-input" id="j-password" type="password" minlength="8" required><button class="pd-pw-toggle" type="button" data-pw-toggle="j-password">Show</button></div></div>
+          <label class="pd-check" style="margin-bottom:14px;align-items:flex-start"><input type="checkbox" id="j-terms" required style="margin-top:3px">&nbsp;I agree to the <a href="../terms/index.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="../privacy/index.html" target="_blank" rel="noopener">Privacy Policy</a></label>
           <button class="pd-btn pd-btn--primary pd-btn--lg pd-btn--block" type="submit" id="j-submit">Request access</button>
           <p class="pd-help" id="j-err" style="color:var(--pd-danger)" role="alert"></p>
         </form>
@@ -59,6 +61,9 @@
       <p class="auth__foot">Already have an account? <a href="../login/index.html">Log in</a></p>
     </div>
   </main>
+  <footer class="footer"><div class="container"><span>&copy; PasteBoard</span><nav aria-label="Legal"><a href="../pricing/index.html">Pricing</a><a href="../terms/index.html">Terms</a><a href="../privacy/index.html">Privacy</a><a href="../refunds/index.html">Refunds</a></nav></div></footer>
+  <script src="../assets/shared/ui/pd-core.js"></script>
+  <script src="../assets/shared/ui/pd-storage.js"></script>
   <script src="../assets/api.js"></script>
   <script>
     (function () {
@@ -80,21 +85,30 @@
       });
 
       $('owner-form').onsubmit = async (e) => {
-        e.preventDefault(); $('o-err').textContent = ''; $('o-submit').disabled = true;
+        e.preventDefault(); $('o-err').textContent = '';
+        if (!$('o-terms').checked) { $('o-err').textContent = 'Please accept the Terms of Service and Privacy Policy to continue.'; return; }
+        $('o-submit').disabled = true;
         try {
           const data = await PBApi.signup({
             username: $('o-username').value.trim(), name: $('o-name').value.trim(),
             email: $('o-email').value.trim(), password: $('o-password').value, plan,
             cardCollected: plan === 'premium' || plan === 'premiumpro',
+            acceptedTerms: true,
           });
           PBApi.setSession(data);
+          // Same extension-linking relay as the login page — see its comment for why.
+          if (params.get('source') === 'extension') {
+            try { await PD.db.init({ adapter: 'web' }); if (PD.db.adapter.name === 'extension-bridge') await PD.db.set('account', { token: data.token, accountEmail: data.accountEmail, deviceId: data.deviceId, role: data.role, name: data.name || data.accountEmail, linkedAt: Date.now() }); } catch (e) { /* not reachable — safe to ignore */ }
+          }
           location.href = '../dashboard/index.html';
         } catch (err) { $('o-err').textContent = err.message; } finally { $('o-submit').disabled = false; }
       };
       $('join-form').onsubmit = async (e) => {
-        e.preventDefault(); $('j-err').textContent = ''; $('j-submit').disabled = true;
+        e.preventDefault(); $('j-err').textContent = '';
+        if (!$('j-terms').checked) { $('j-err').textContent = 'Please accept the Terms of Service and Privacy Policy to continue.'; return; }
+        $('j-submit').disabled = true;
         try {
-          const r = await PBApi.deviceRequest({ ownerEmail: $('j-owner').value.trim(), username: $('j-username').value.trim(), name: $('j-name').value.trim(), email: $('j-email').value.trim(), password: $('j-password').value });
+          const r = await PBApi.deviceRequest({ ownerEmail: $('j-owner').value.trim(), username: $('j-username').value.trim(), name: $('j-name').value.trim(), email: $('j-email').value.trim(), password: $('j-password').value, acceptedTerms: true });
           $('sent-msg').textContent = r.message || 'Request sent. Waiting for approval.';
           $('view-join').hidden = true; $('view-sent').hidden = false;
         } catch (err) { $('j-err').textContent = err.message; } finally { $('j-submit').disabled = false; }

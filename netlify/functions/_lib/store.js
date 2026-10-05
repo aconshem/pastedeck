@@ -4,13 +4,15 @@
  * can't get a deploy context (e.g. running these functions with plain `node` for testing, before `netlify dev`
  * is set up) it falls back to JSON files under /tmp so the logic can still be exercised locally.
  *
- * Collections: accounts (keyed by lowercased email), interest (list of paused-plan CTA clicks).
+ * Collections: accounts (keyed by lowercased email), interest (list of paused-plan CTA clicks),
+ * analytics (per-account usage rollups, keyed by lowercased account email), payments (an append-only ledger).
  * Swap this file alone if you later move off Netlify Blobs to a real database — nothing else in netlify/functions
  * touches storage directly.
  */
 const fs = require('fs');
 const path = require('path');
 const DIR = process.env.PASTEBOARD_LOCAL_DIR || '/tmp/pasteboard-data';
+const ANALYTICS_DAYS_KEPT = 90;
 
 let blobsMod = null;
 try { blobsMod = require('@netlify/blobs'); } catch (e) { /* not installed / not bundled — fine, local fallback below */ }
@@ -61,6 +63,36 @@ module.exports = {
       const all = await readCollection('interest', []);
       all.push(entry);
       await writeCollection('interest', all.slice(-5000)); // cap so the blob doesn't grow forever
+      return entry;
+    },
+  },
+  /* One entry per account email: { devices: { <deviceId>: { days: { <YYYY-MM-DD>: {snippets,autofills,captures,savedSec} } } } }.
+     Devices push their own day's totals (idempotent overwrite, not additive — see analytics-sync.js); only the
+     account owner, or a member the owner has granted analyticsAccess to, can read the aggregate (analytics.js). */
+  analytics: {
+    all: () => readCollection('analytics', {}),
+    get: async (accountEmail) => (await readCollection('analytics', {}))[String(accountEmail || '').toLowerCase()] || { devices: {} },
+    setDeviceDay: async (accountEmail, deviceId, day, totals) => {
+      const all = await readCollection('analytics', {});
+      const key = String(accountEmail || '').toLowerCase();
+      const acc = all[key] || (all[key] = { devices: {} });
+      const dev = acc.devices[deviceId] || (acc.devices[deviceId] = { days: {} });
+      dev.days[day] = totals;
+      const keep = Object.keys(dev.days).sort().slice(-ANALYTICS_DAYS_KEPT);
+      const trimmed = {}; keep.forEach((d) => (trimmed[d] = dev.days[d]));
+      dev.days = trimmed;
+      await writeCollection('analytics', all);
+      return acc;
+    },
+  },
+  /* Append-only. No processor is connected yet, so this is written to either by hand (admin panel's "record a
+     payment" form, for bank transfers etc.) or, later, by a real payment webhook — see docs/architecture.md. */
+  payments: {
+    all: () => readCollection('payments', []),
+    add: async (entry) => {
+      const all = await readCollection('payments', []);
+      all.push(entry);
+      await writeCollection('payments', all);
       return entry;
     },
   },

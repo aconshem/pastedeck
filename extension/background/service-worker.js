@@ -31,6 +31,7 @@ chrome.runtime.onStartup.addListener(async () => { await ready; PD.devices.regis
 
 function boot() {
   chrome.alarms.create('pd-tick', { periodInMinutes: 1, delayInMinutes: 0.1 });
+  chrome.alarms.create('pd-analytics-sync', { periodInMinutes: 5, delayInMinutes: 1 });
   PD.sessions.sweep();
   syncTaskAlarms();
   updateBadge();
@@ -73,12 +74,33 @@ function notifyDue() {
   });
 }
 
-chrome.alarms.onAlarm.addListener(async () => {
+chrome.alarms.onAlarm.addListener(async (alarm) => {
   await ready;
+  if (alarm.name === 'pd-analytics-sync') return syncAnalytics();
   PD.sessions.sweep();
   notifyDue();
   updateBadge();
 });
+
+/* ------------------------------------------------------------------ account link + analytics sync
+   The extension never shows a login form (see docs/architecture.md). Instead, logging in or signing up on the
+   website with ?source=extension relays the resulting session token into PD.db's 'account' key via the normal
+   website<->extension bridge (content/bridge.js) — see website/login & signup's linkExtension(). Once linked,
+   this pushes the device's own daily usage totals up as a heartbeat + team-wide analytics feed. */
+async function syncAnalytics() {
+  const acct = db.get('account');
+  if (!acct || !acct.token) return;
+  const base = String(db.get('settings').siteUrl || PD.CONFIG.siteUrl).replace(/\/+$/, '');
+  try {
+    const t = PD.analytics.today();
+    const res = await fetch(base + '/.netlify/functions/analytics-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + acct.token },
+      body: JSON.stringify({ day: PD.util.dayKey(), snippets: t.snippets, autofills: t.autofills, captures: t.captures, savedSec: t.savedSec }),
+    });
+    if (res.status === 401 || res.status === 403) db.set('account', null); // revoked/expired — silently unlink
+  } catch (e) { /* offline, or no backend at this siteUrl — try again next tick */ }
+}
 
 chrome.notifications.onButtonClicked.addListener(async (id, idx) => {
   await ready;
@@ -177,6 +199,8 @@ async function handle(msg, sender) {
     }
     case 'PD_OPEN': { chrome.tabs.create({ url: siteUrl(msg.page) }); return { ok: true }; }
     case 'PD_SITE_URL': return { url: siteUrl(msg.page) };
+    case 'PD_UNLINK': { await db.set('account', null); return { ok: true }; }
+    case 'PD_SYNC_NOW': { await syncAnalytics(); return { ok: true }; }
     default: return { error: 'unknown message ' + msg.type };
   }
 }

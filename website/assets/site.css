@@ -74,6 +74,24 @@
 
 .footer { padding: 32px 0 48px; border-top: 1px solid var(--pd-border); font-size: 13px; color: var(--pd-muted); }
 .footer .container { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.footer nav { display: flex; gap: 18px; flex-wrap: wrap; }
+.footer nav a { color: var(--pd-muted); text-decoration: none; }
+.footer nav a:hover { color: var(--pd-text); text-decoration: underline; }
+
+/* Legal pages (Terms / Privacy / Refunds) */
+.legal-hdr { border-bottom: 1px solid var(--pd-border); background: rgba(248, 249, 250, .96); }
+.legal-hdr .nav__in { height: 56px; }
+.legal { max-width: 760px; margin: 0 auto; padding: 48px 24px 80px; }
+.legal h1 { font-size: 30px; letter-spacing: -0.02em; margin-bottom: 6px; }
+.legal .updated { color: var(--pd-faint); font-size: 13px; margin-bottom: 28px; }
+.legal h2 { font-size: 18px; margin: 32px 0 10px; letter-spacing: -0.01em; }
+.legal p, .legal li { font-size: 15px; line-height: 1.7; color: var(--pd-text); }
+.legal p { margin: 0 0 14px; }
+.legal ul, .legal ol { margin: 0 0 14px; padding-left: 22px; }
+.legal li { margin-bottom: 6px; }
+.legal a { color: var(--pd-text); text-decoration: underline; }
+.legal .callout { margin: 24px 0; padding: 14px 16px; background: var(--pd-warn-bg); border: 1px solid #FEDF89; border-radius: 10px; font-size: 13px; color: var(--pd-warn); }
+.legal .callout p { margin: 0; color: inherit; font-size: 13px; }
 
 /* Login */
 .auth { min-height: 100vh; display: grid; place-items: center; padding: 24px; }

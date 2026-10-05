@@ -34,10 +34,15 @@ exports.handler = async (event) => {
   const last30 = Date.now() - 30 * 86400000;
   const interestRecent = interest.filter((i) => i.at >= last30);
 
+  const payments = await store.payments.all();
+  const collectedUSD = Math.round(payments.reduce((a, p) => a + p.amountUSD, 0) * 100) / 100;
+  const recentPayments = payments.slice().sort((a, b) => b.at - a.at).slice(0, 25);
+
   return ok({
     usingBlobs: store.usingBlobs(),
     totals: Object.assign({ accounts: accounts.length }, byPlan, { totalDevices, pendingRequests, extraDevices, activeTrials }),
     revenueEstimateUSD: Math.round(revenue * 100) / 100,
+    collectedUSD, paymentsCount: payments.length, recentPayments,
     premiumProInterest: { allTime: interest.length, last30Days: interestRecent.length },
     recentAccounts: recent.slice(0, 25),
   });
