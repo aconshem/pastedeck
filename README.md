@@ -12,8 +12,8 @@ pasteboard/
 ├── website/      landing/, login/, signup/, dashboard/, admin/, assets/   (Netlify publishes this folder)
 ├── extension/    popup/, sidepanel/, content/, background/, options/, assets/   (Chrome loads this folder)
 ├── shared/       ui/ (design system + storage + domain logic), branding/, icons/   <- edit here
-├── netlify/functions/   the real backend: signup, login, device requests/approval, account, team-update,
-│                        track-interest, admin-stats, plus _lib/ (crypto, store, http helpers)
+├── netlify/functions/   the real backend: auth, passkeys, password reset, teams/invitations,
+│                        checkout + Creem webhook, entitlement, admin (see docs/architecture.md)
 ├── tools/        sync-shared.sh / .bat   (plain copy of shared/ into website/ and extension/)
 └── docs/         README, roadmap, architecture, storage-schema
 ```
@@ -59,9 +59,44 @@ the backend" error instead of failing silently — there's no server behind a pl
 ### Environment variables (set these in Netlify, or a local `.env` for `netlify dev`)
 | Variable | Purpose |
 | --- | --- |
-| `PASTEBOARD_SECRET` | Signs session tokens (HMAC). **Set a real random value before going live** — the code falls back to an insecure dev default and logs a warning if it's missing. |
+| `PASTEBOARD_SECRET` | Signs session tokens (HMAC). **Required (32+ chars) in production** — functions refuse to run without it. |
 | `PASTEBOARD_ADMIN_TOKEN` | Required for the founder admin panel (`/admin`). No default — `admin-stats` refuses every request until this is set. |
+| *Payments, email, founder bootstrap* | See `.env.example` for `CREEM_*`, `RESEND_API_KEY`, `EMAIL_FROM`, `FOUNDER_*`. |
 | `PASTEBOARD_LOCAL_DIR` | Optional. Where the local JSON-file fallback store writes when `@netlify/blobs` has no deploy context (plain `node`, or `netlify dev` without blobs configured). Defaults to `/tmp/pasteboard-data`. Never used once deployed on Netlify with Blobs available. |
+
+### Deploy
+Push the repo to Git and connect it to Netlify. `netlify.toml` already publishes `website/` with no build command and
+points `functions` at `netlify/functions/`. Netlify installs `netlify/functions/package.json`'s one dependency
+(`@netlify/blobs`) automatically — nothing to run by hand.
+
+### After editing `shared/`
+Run `tools/sync-shared.sh` (or `tools\sync-shared.bat` on Windows). It copies `shared/` into `website/assets/shared`
+and `extension/assets/shared`, because each of those folders is deployed on its own.
+
+## Keyboard shortcuts
+
+| Action | Shortcut |
+| --- | --- |
+| Command bar | Ctrl+Shift+Space (Mac: Command+Shift+Space) |
+| Quick add task | **Alt+Shift+T** (see note) |
+| In the command bar | Up / Down, Enter to run, Esc to close, Tab switches to "new task" |
+
+**Note:** Chrome reserves Ctrl+Shift+T ("reopen closed tab") and does not let extensions bind it. Quick Add uses
+Alt+Shift+T instead. Users can remap both at `chrome://extensions/shortcuts`.
+
+## The account journey
+1. **Install** the extension (Load unpacked for now; set `CHROME_STORE_URL` in the landing page script once listed).
+2. **Create an account** at `/signup` — you must accept the Terms and Privacy Policy; marketing email is an optional,
+   separate checkbox. Verify your email.
+3. **Connect the extension** — extension menu -> *Connect account* opens the site; log in and it pairs with a one-time code.
+4. **Free** gives 1 desk, 1 snippet, 1 session, 1 seat; Capture and Paste Blueprint are off. **Premium ($25, one time)**
+   unlocks everything with 5 seats; extra seats $2.50 each. A one-time 14-day trial is available without a card.
+5. **Teammates** are invited by email from the dashboard (owner only) — no open "request access".
+6. **One login = one device at a time**; signing in elsewhere signs the other device out.
+7. **Forgot password?** Email reset link, or sign in with a passkey.
+
+Payments: `docs/payment-setup.md`. Operations (email, bootstrap, migration, placeholders): `docs/operations.md`.
+Copy `.env.example` for the full variable list.
 
 ### Deploy
 Push the repo to Git and connect it to Netlify. `netlify.toml` already publishes `website/` with no build command and
@@ -116,9 +151,8 @@ Password fields have a Show/Hide toggle on login and signup.
 | Analytics (local, per-device) | Working |
 | **Real accounts**: owner signup, email+password login, request-access-to-a-team flow, owner-only approve/reject, revoke/restore/remove, per-member analytics-access grant | Working (Netlify Functions + Blobs, tested end-to-end — see docs/architecture.md) |
 | Dashboard: Home, Desks, Clipboard, Analytics (gated to owner / granted members), Team & Devices, Company, Tasks, Settings | Working |
-| Founder admin panel (`/admin`): accounts by plan, active devices, pending requests, trial count, revenue estimate, Premium Pro interest clicks | Working, gated by `PASTEBOARD_ADMIN_TOKEN` |
-| Pricing: Free / Free+Email / Premium ($20 one-time, 5 seats, $2.50/extra) / Premium Pro ($40, unlimited seats, cloud sync) with a 14-day trial on paid tiers | Front end + trial bookkeeping working; **no payment processor connected** — nothing is ever actually charged |
-| Premium Pro cloud sync | **Paused** — the plan is listed, its CTA logs interest (`track-interest`) instead of completing signup, with a polite "joining soon" message |
+| Founder admin panel (`/admin`): accounts, teams, plans, trials, extra seats, live vs test revenue, recent payments | Working |
+| Pricing: Free / Premium ($25 one-time, 5 seats incl. owner, $2.50 per extra seat) with a 14-day trial | Working (Creem checkout needs your keys) |
 | Google / social login | Not implemented (removed rather than faked) — planned once Supabase keys are available |
 
 See [docs/architecture.md](architecture.md), [docs/storage-schema.md](storage-schema.md) and [docs/roadmap.md](roadmap.md).
