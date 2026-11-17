@@ -8,13 +8,13 @@ One codebase, three surfaces, one shared core.
         ┌──────────────────┴───────────────────┐
    extension/                              website/
    ├─ background/service-worker.js         ├─ landing/      static marketing page
-   │   alarms, notifications, sweep,       ├─ login/        mock auth (assets/auth.js)
+   │   alarms, notifications, sweep,       ├─ login/ signup/ ...  real auth pages (assets/api.js)
    │   history writes, desk detection,     └─ dashboard/    account control center
    │   commands, context menu                    │
    ├─ content/                                   │  postMessage
    │   content.js     insert, attach, clipboard, │◄─────────────────────────┐
    │                  expansion, floating pill   │                          │
-   │   commandbar.js  Ctrl+Shift+Space overlay   │        content/bridge.js (pasteboard.com + localhost only)
+   │   commandbar.js  Ctrl+Shift+Space overlay   │        content/bridge.js (pastedeck.netlify.app + localhost only)
    │   blueprint.js   recorder, capture, fill    │
    │   bridge.js      website <-> extension      │
    ├─ popup/ + sidepanel/  (one app: assets/app.js)
@@ -28,7 +28,7 @@ One codebase, three surfaces, one shared core.
 2. **Core is shared.** Business rules (limits, expiry, search, task parsing, blueprints) exist once in `shared/ui/pd-domain.js`. UIs only call it.
 3. **No build step, no modules — for the product.** Classic scripts attach to `window.PD` (`globalThis.PD`). That is why they load from `file://`, in content scripts and via `importScripts` in the service worker. The one exception is `netlify/functions/`, a genuinely separate backend deploy target with its own `package.json`; it stays dependency-free apart from `@netlify/blobs` (the data store), using Node's built-in `crypto` for password hashing and session tokens.
 4. **Cheap on every page.** Content scripts do not load the database until the person uses something. Clipboard captures and page context go through the service worker.
-5. **Feature flags + plan gates** decide what is visible. Backend features ship scaffolded and off.
+5. **Feature flags + plan gates** decide what is visible. Plan limits come from the server entitlement; there is no cloud sync.
 
 ## The `PD` namespace
 
@@ -45,7 +45,7 @@ One codebase, three surfaces, one shared core.
 | Adapter | Used by |
 | --- | --- |
 | `chrome.storage.local` | Extension pages, service worker, content scripts |
-| `extension-bridge` | Website when the extension answers a `ping` (dashboard on `pasteboard.com` / `localhost`) |
+| `extension-bridge` | Website when the extension answers a `ping` (dashboard on `pastedeck.netlify.app` / `localhost`) |
 | `localStorage` | Website demo mode (also `file://`) |
 | `memory` | Tests |
 
@@ -79,105 +79,49 @@ An adapter is `{ name, load(keys), save(obj), remove(keys), subscribe(fn) }`.
 
 **Smart context.** `tabs.onActivated/onUpdated` -> `PD.desks.autoSwitch(url)` picks the desk with the longest matching pattern unless `settings.manualPin` is true. Picking a desk by hand sets the pin; the header "Auto" button clears it.
 
-## Plugging in the backend later
+## Backend: accounts, teams, billing (Netlify Functions + Blobs)
 
-Nothing below requires changing a data model.
-
-### Cloud sync (`cloudSync`)
-- `PD.db._commit` already appends `{ns, id, op, ts}` to `pd:outbox` when the flag is on.
-- Write a sync adapter that (1) POSTs the outbox, (2) pulls records with `updatedAt > lastSync`, (3) merges per record by `rev` / `updatedAt`, (4) writes through `PD.db.upsert` with the remote `rev`, (5) trims the outbox. Run it from the service worker on an alarm.
-- Files and clipboard images (`pdb:*`) sync separately as blobs.
-- Sessions and session files should stay device-only or be encrypted: they hold passports and IDs.
-
-### Auth (`realAuth`)
-- Replace the five method bodies in `website/assets/auth.js`. Pages never touch storage directly.
-- The extension never renders a login form. "Log in" opens `<siteUrl>/login/index.html?source=extension`. After login, hand the token to the extension via `externally_connectable` (add `pasteboard.com` to the manifest) or the bridge, and store it in `pd:settings.auth`.
-
-### Licensing and devices (`deviceLicensing`, `payments`)
-- `PD.plan` reads `settings.plan`. Replace that with a signed license object verified locally, refreshed from the server.
-- `PD.devices` already models name / browser / lastActive / status; `add()` is the pairing placeholder.
-
-### Team and company (`teamBackend`)
-- `PD.team.canManage()` is the single permission check in the UI. Enforce the same rule on the server. Regular users inherit `shared: true` records.
-
-## Real backend: accounts, teams, admin (Netlify Functions + Blobs)
-
-Everything else in this document is local-first. Accounts are not — signup, login, the team/device roster, trial
-state and the founder's aggregate stats live in `netlify/functions/`, backed by Netlify Blobs.
+Local-first still holds: desks, snippets, sessions, blueprints, files and clipboard history **never** leave the device.
+The server stores only identity, billing, team membership and aggregate usage counts.
 
 ```text
 netlify/functions/
-├── _lib/
-│   ├── crypto.js     scrypt password hashing, HMAC-signed session tokens, id generation — no dependency
-│   ├── store.js       JSON-collection store: real Netlify Blobs in production, a /tmp JSON-file fallback
-│   │                   for local testing with plain `node` (see readCollection/writeCollection)
-│   ├── http.js         ok()/bad()/parseBody()/bearer() response + request helpers shared by every function
-│   └── device-decision.js   shared approve/reject logic used by device-approve.js and device-reject.js
-├── signup.js          owner signup: creates the account + its first (owner) device/user
-├── login.js           matches an email against *any* device on *any* account (each teammate has their own
-│                       email+password under the shared account), returns a signed session token
-├── device-request.js  request access to an existing account by owner email — sits `pending` until approved
-├── device-approve.js / device-reject.js   owner-only decisions on a pending request
-├── account.js         GET: the signed-in account's plan/trial/roster, sanitized (no password hashes)
-├── team-update.js      owner-only: grant/revoke analytics access, change role, revoke/restore/remove a member
-├── track-interest.js   logs a click on the paused Premium Pro CTA — no auth, analytics only
-└── admin-stats.js      founder-only aggregate stats across every account, gated by `PASTEBOARD_ADMIN_TOKEN`
+  signup login logout forgot-password reset-password change-password verify-email passkey
+  pair entitlement account trial-start team-update team-invite invite-accept
+  analytics-sync analytics checkout checkout-status payment-webhook refund record-payment
+  admin-stats admin-migrate founder-bootstrap
+  _lib/ config crypto http store entitlements auth email accounts webauthn
+        payment-provider creem purchases admin
 ```
 
-**Data model** — one JSON object per account, keyed by the owner's email:
-```json
-{
-  "email": "owner@company.com", "plan": "free|freeplus|premium|premiumpro", "createdAt": 0,
-  "trial": { "startedAt": 0, "endsAt": 0 } | null,
-  "billing": { "cardCollected": false, "chargedAt": null },
-  "devices": [
-    { "id": "dev_...", "username": "", "name": "", "email": "", "passwordHash": "salt:hash",
-      "role": "owner|admin|member", "status": "active|pending|revoked", "analyticsAccess": false,
-      "createdAt": 0, "lastLoginAt": 0, "extra": false }
-  ]
-}
-```
-A "device" here really means a *person's own login* under the account — matching the brief's "additional
-devices/users on the same [account] email" model, where each teammate signs in with their own email/password but
-everything is grouped under the owner account. `extra: true` marks a seat beyond the plan's included count (5 for
-Premium, unlimited for Premium Pro) — surfaced in the dashboard and counted in admin stats as a $2.50/mo add-on;
-nothing is actually billed yet (see Payments below).
+- **Storage** (`_lib/store.js`): Netlify Blobs, one key per record, with atomic create (`onlyIfNew`) and etag
+  compare-and-swap (`kv.update` retry loop). Keys: `acct/<email>`, `ix/<email>` (global email uniqueness),
+  `tok/<sha256>` (single-use reset/verify/invite/pair tokens), `ord/<orderId>` (webhook idempotency), `chk/<requestId>`,
+  `pk/<credentialId>`, `an/<account>` (aggregate counts). A local JSON file stands in when no Blobs context exists (tests).
+- **Plans** are only `free` and `premium` and are computed server-side (`_lib/entitlements.js`): paid Premium, a running
+  14-day trial, or Free. Free = 1 desk, 1 snippet, 1 session, 1 seat; Capture and Paste Blueprint off. Premium = unlimited +
+  5 seats including the owner, extra seats $2.50 each, all one-time. The extension and website only *display* it;
+  client-side limits are advisory.
+- **One device per login.** Each login rotates the member's `sid`; `authenticate()` rejects any token whose `sid` differs
+  (`401 SIGNED_IN_ELSEWHERE`). Device 1 is signed out when device 2 logs in, and vice versa. Revoke/remove clears `sid`.
+- **Password recovery.** `forgot-password` always answers the same way (no account enumeration) and emails a 1-hour
+  single-use link; resetting ends every session. Passkeys (WebAuthn, ES256/RS256, own verifier in `_lib/webauthn.js`)
+  sign in without a password; a passkey sign-in may set a new password without the old one for 15 minutes.
+- **Sign-up** requires accepting the Terms and Privacy Policy (version + time recorded); marketing email is a separate,
+  optional, unticked checkbox.
+- **Extension link.** Website calls `pair create` -> one-time 2-minute code bound to the current session. The bridge
+  passes only that code to the service worker, which exchanges it for an extension token (`typ: ext`). The extension
+  refreshes `entitlement` periodically; 401/403 unlinks it; a cached entitlement is good for 7 days offline.
+- **Analytics** are opt-in in the extension (off by default), counts only, per install, shown per member.
+- **Payments**: see `docs/payment-setup.md`. Hosted Creem checkout; webhook + return-page polling both go through
+  `applyPurchase`, idempotent on the order id.
+- **Admin**: `X-Admin-Token` header = `PASTEBOARD_ADMIN_TOKEN`; no default.
 
-**Auth flow.** Session tokens are `base64url(payload).base64url(hmac)` — stateless, 30-day expiry, signed with
-`PASTEBOARD_SECRET`. `bearer(event)` reads `Authorization: Bearer <token>`; every owner-only endpoint calls
-`verifyToken` then checks `payload.role === 'owner'`. There is no email verification or password reset flow yet —
-see roadmap.md.
+Account document: `{ email, createdAt, members[], invitations[], purchases[], entitlements: { premium, extraSeats }, trial }`.
+Member: `id, name, email, passwordHash (scrypt), role owner|admin|member, status active|revoked|removed, analyticsAccess,
+emailVerified, termsAcceptedAt, termsVersion, marketingOptIn, sid, sidMethod, passkeys[], failed{count,until}`.
 
-**Why a device-approval flow instead of open self-signup per seat**: the brief's model is one super-admin (owner)
-per paying account, who must approve every additional login. `device-request.js` is intentionally the *only* way
-to add a device/user (no direct signup into someone else's account), and `team-update.js` is the *only* way to
-change what an approved member can do (role, analytics access, revoke).
-
-**Analytics gating.** The dashboard's Analytics page checks `account().you.role === 'owner' || account().you.analyticsAccess`
-before rendering anything — a non-owner without that grant sees a lock message instead of local usage data. This
-mirrors the brief's "additional devices/users can't access the analytics dashboard unless access is given by the
-super admin."
-
-**Pricing & payments (front end ready, nothing wired to a processor).** Four tiers live in `PD.PLANS`
-(`shared/ui/pd-core.js`) mirrored by `netlify/functions/*` seat/price math: Free (4 snippets, 1 desk, 1 seat),
-Free+Email (7 snippets, 2 desks), Premium ($20 one-time, all features, 5 seats, $2.50/extra), Premium Pro ($40,
-unlimited seats + cloud sync, **paused**). Signing up for a paid tier starts a 14-day trial (`account.trial`) with
-everything unlocked; `billing.cardCollected` is just a boolean the signup form sets today — there is no Stripe/etc.
-integration, so nothing is ever actually charged. Premium Pro's card is intentionally never taken: its landing-page
-CTA calls `track-interest.js` and shows a polite "joining soon" message instead of completing signup, while still
-recording the click so `admin-stats.js` can report demand.
-
-**Founder admin panel** (`website/admin/`) is deliberately separate from the customer dashboard: a single admin
-token (`PASTEBOARD_ADMIN_TOKEN`, no per-founder accounts) gates `admin-stats.js`, which aggregates every account's
-plan, active devices, pending requests, active trials, Premium Pro interest clicks, and a revenue *estimate* (it is
-not real payment data, since none exists yet).
-
-**Testing without a Netlify deploy.** Every function was exercised directly with plain `node` (no Netlify CLI): the
-JSON-file fallback in `_lib/store.js` stands in for Blobs, and a stubbed `window.fetch` in jsdom drives the actual
-website pages against the real handlers end-to-end (signup → pending request → owner approval → login → analytics
-gating). `@netlify/blobs` degrades to that same fallback gracefully even when the package is installed but no
-deploy context exists — confirmed by loading it directly. What could *not* be tested here is the real Netlify Blobs
-runtime itself, or the Chrome Web Store install path.
+Run the backend tests with `node tests/backend.test.js`.
 
 ## Permissions rationale
 
@@ -190,7 +134,7 @@ runtime itself, or the Chrome Web Store install path.
 | `contextMenus` | "Save selection as snippet" |
 | `clipboardWrite` | Copy fallbacks |
 | Content script on `<all_urls>` | Clipboard history, floating pill, text expansion, recorder. This produces Chrome's "read and change all your data on all websites" warning. If that is a problem at review time, drop always-on scripts and inject with `activeTab` only, at the cost of automatic clipboard history and expansion. |
-| Bridge on `pasteboard.com` / `localhost` | Dashboard <-> extension data. Remove `localhost` from the manifest before publishing. |
+| Bridge on `pastedeck.netlify.app` / `localhost` | Dashboard <-> extension data. Remove `localhost` from the manifest before publishing. |
 
 ## Security and privacy notes
 - Data never leaves the device today. There are no network calls in the extension.

@@ -9,7 +9,7 @@
 Everything lives in `chrome.storage.local` (extension) or `localStorage` (website demo mode) under keys prefixed `pd:`.
 The `PD.db` layer reads from an in-memory cache and writes through to the active adapter, so the UI code is synchronous and the storage backend is swappable.
 
-Every array record has: `id`, `createdAt`, `updatedAt`, `rev` (increments on each write). These three fields are what a cloud sync adapter needs; no model has to change to add sync.
+Every array record has: `id`, `createdAt`, `updatedAt`, `rev` (increments on each write). These three fields are what a future sync adapter needs; no model has to change to add sync.
 
 | Key | Type | Purpose |
 | --- | --- | --- |
@@ -27,7 +27,6 @@ Every array record has: `id`, `createdAt`, `updatedAt`, `rev` (increments on eac
 | `pd:analytics` | object | `{ days: { "YYYY-MM-DD": {...} } }` |
 | `pd:devices` | array | Devices (this local install's own device record; unrelated to the backend account roster) |
 | `pd:leads` | array | Leads — decoded from a pasted candidate reply, does **not** expire like sessions |
-| `pd:outbox` | array | Change log for cloud sync (only written when `cloudSync` is on) |
 | `pdb:<id>` | string | Large data (data: URLs) for files and clipboard images. Kept out of the namespaces so content scripts never load them. |
 
 ## Records
@@ -106,8 +105,8 @@ Shared images are `files` records with `shared: true`.
 ### settings
 ```json
 { "activeDeskId": "", "activeSessionId": null, "manualPin": false, "autoDetect": true, "clipboardHistory": true, "ignoreHosts": [],
-  "notifications": true, "floatingPill": true, "textExpansion": true, "defaultExpiry": "1h", "plan": "free|freeplus|premium|premiumpro",
-  "siteUrl": "https://pasteboard.com", "flags": { "cloudSync": false },
+  "notifications": true, "floatingPill": true, "textExpansion": true, "defaultExpiry": "1h", (no plan field: the plan comes from the server entitlement)
+  "siteUrl": "https://pastedeck.netlify.app", "flags": {},
   "standardFields": [ { "key": "salary", "label": "Salary figure", "value": "" }, "...(location, workinghours, package by default)" ] }
 ```
 `plan` here is this **local install's own feature-limit preview** (Settings > "This browser's local plan limits"),
@@ -141,3 +140,6 @@ Kept for 90 days. Time saved = snippets x 20 s + autofilled fields x 6 s + captu
 
 ## Migrations
 `meta.schemaVersion` is 1. When a model changes, bump `PD.SCHEMA_VERSION` and add a step in `PD.db.init` that upgrades cached data before the UI reads it.
+
+## Server-side data
+Account, team, billing and aggregate-count records live on the server, not in this schema — see `docs/architecture.md` (Backend).
