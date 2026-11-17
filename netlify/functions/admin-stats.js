@@ -1,49 +1,30 @@
 const store = require('./_lib/store');
-const { ok, bad } = require('./_lib/http');
+const { ok, route } = require('./_lib/http');
+const { requireAdmin } = require('./_lib/admin');
+const { effective, seats } = require('./_lib/entitlements');
 
-const PRICES = { free: 0, freeplus: 0, premium: 20, premiumpro: 40 };
-
-exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') return ok({});
-  const token = event.headers['x-admin-token'] || event.headers['X-Admin-Token'];
-  const expected = process.env.PASTEBOARD_ADMIN_TOKEN;
-  if (!expected) return bad('PASTEBOARD_ADMIN_TOKEN is not set on the server.', 500);
-  if (token !== expected) return bad('Not authorized.', 401);
-
-  const all = await store.accounts.all();
-  const accounts = Object.values(all);
-  const byPlan = { free: 0, freeplus: 0, premium: 0, premiumpro: 0 };
-  let totalDevices = 0, pendingRequests = 0, activeTrials = 0, extraDevices = 0, revenue = 0;
-  const recent = [];
-
+exports.handler = route(null, async (event) => {
+  requireAdmin(event);
+  const accounts = await store.accounts.all();
+  const t = { accounts: accounts.length, free: 0, premium: 0, activeTrials: 0, members: 0, pendingInvites: 0, extraSeatsSold: 0 };
+  let revenue = 0, testRevenue = 0;
+  const recentPayments = [];
   accounts.forEach((a) => {
-    byPlan[a.plan] = (byPlan[a.plan] || 0) + 1;
-    revenue += PRICES[a.plan] || 0;
-    (a.devices || []).forEach((d) => {
-      if (d.status === 'active') totalDevices++;
-      if (d.status === 'pending') pendingRequests++;
-      if (d.extra && d.status === 'active') extraDevices++;
+    const e = effective(a); t[e.plan]++; if (e.source === 'trial') t.activeTrials++;
+    const s = seats(a); t.members += s.used; t.pendingInvites += s.reserved;
+    (a.purchases || []).forEach((p) => {
+      if (p.status === 'paid' && p.type === 'seats') t.extraSeatsSold += p.units;
+      const row = { accountEmail: a.email, type: p.type, units: p.units, amountUSD: p.amountUSD, at: p.at, status: p.status, test: !!p.test, demo: !!p.demo };
+      recentPayments.push(row);
+      if (p.status === 'paid' && p.amountUSD) { if (p.test || p.demo) testRevenue += p.amountUSD; else revenue += p.amountUSD; }
     });
-    if (a.trial && a.trial.endsAt > Date.now()) activeTrials++;
-    recent.push({ email: a.email, plan: a.plan, createdAt: a.createdAt, devices: (a.devices || []).filter((d) => d.status === 'active').length });
   });
-  revenue += extraDevices * 2.5;
-  recent.sort((x, y) => y.createdAt - x.createdAt);
-
-  const interest = await store.interest.all();
-  const last30 = Date.now() - 30 * 86400000;
-  const interestRecent = interest.filter((i) => i.at >= last30);
-
-  const payments = await store.payments.all();
-  const collectedUSD = Math.round(payments.reduce((a, p) => a + p.amountUSD, 0) * 100) / 100;
-  const recentPayments = payments.slice().sort((a, b) => b.at - a.at).slice(0, 25);
-
+  recentPayments.sort((x, y) => y.at - x.at);
   return ok({
-    usingBlobs: store.usingBlobs(),
-    totals: Object.assign({ accounts: accounts.length }, byPlan, { totalDevices, pendingRequests, extraDevices, activeTrials }),
-    revenueEstimateUSD: Math.round(revenue * 100) / 100,
-    collectedUSD, paymentsCount: payments.length, recentPayments,
-    premiumProInterest: { allTime: interest.length, last30Days: interestRecent.length },
-    recentAccounts: recent.slice(0, 25),
+    usingBlobs: store.usingBlobs(), totals: t,
+    revenueUSD: Math.round(revenue * 100) / 100, // real, paid, live-mode only: test-mode and demo purchases are excluded
+    testOrDemoUSD: Math.round(testRevenue * 100) / 100,
+    recentPayments: recentPayments.slice(0, 25),
+    recentAccounts: accounts.map((a) => ({ email: a.email, plan: effective(a).plan, createdAt: a.createdAt, members: seats(a).used })).sort((a, b) => b.createdAt - a.createdAt).slice(0, 25),
   });
-};
+});

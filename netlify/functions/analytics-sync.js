@@ -1,33 +1,21 @@
 const store = require('./_lib/store');
-const { verifyToken } = require('./_lib/crypto');
-const { ok, bad, parseBody, bearer } = require('./_lib/http');
+const { ok, parseBody, route, httpError } = require('./_lib/http');
+const { authenticate } = require('./_lib/auth');
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const num = (v) => Math.min(1e7, Math.max(0, Math.round(+v || 0)));
 
-exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') return ok({});
-  if (event.httpMethod !== 'POST') return bad('POST only', 405);
-  const payload = verifyToken(bearer(event));
-  if (!payload) return bad('Sign in again.', 401);
-
-  const account = await store.accounts.get(payload.accountEmail);
-  if (!account) return bad('Account not found.', 404);
-  const device = (account.devices || []).find((d) => d.id === payload.deviceId);
-  if (!device || device.status !== 'active') return bad('This access is no longer active.', 403);
-
+/* Receives COUNTS ONLY: snippets used, autofills, captures, estimated seconds saved. There is deliberately no field
+   for text, URLs, names or file data — anything else in the body is ignored, not stored. The extension only calls this
+   after the person turns on "Share usage counts" and sends consent:true. */
+exports.handler = route('POST', async (event) => {
+  const { account, me } = await authenticate(event, { type: 'ext' });
   const b = parseBody(event);
+  if (b.consent !== true) throw httpError(400, 'Analytics consent is required.', { code: 'NO_CONSENT' });
+  const installId = String(b.installId || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40);
+  if (!installId) throw httpError(400, 'installId is required.');
   const day = DAY_RE.test(b.day) ? b.day : new Date().toISOString().slice(0, 10);
-  const totals = {
-    snippets: Math.max(0, +b.snippets || 0),
-    autofills: Math.max(0, +b.autofills || 0),
-    captures: Math.max(0, +b.captures || 0),
-    savedSec: Math.max(0, +b.savedSec || 0),
-  };
-
-  // Idempotent: the device sends its own cumulative totals for that day each time, so repeated syncs never double-count.
-  await store.analytics.setDeviceDay(payload.accountEmail, payload.deviceId, day, totals);
-
-  device.lastActive = Date.now();
-  await store.accounts.save(account);
+  await store.analytics.setDay(account.email, me.id, installId, day, { snippets: num(b.snippets), autofills: num(b.autofills), captures: num(b.captures), savedSec: num(b.savedSec) });
+  await store.accounts.update(account.email, (acc) => { const m = acc.members.find((x) => x.id === me.id); m.lastActive = Date.now(); m.analyticsConsentAt = m.analyticsConsentAt || Date.now(); });
   return ok({ ok: true });
-};
+});

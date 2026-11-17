@@ -1,30 +1,21 @@
 const store = require('./_lib/store');
-const { ok, bad, parseBody } = require('./_lib/http');
+const { ok, parseBody, route, httpError } = require('./_lib/http');
+const { requireAdmin } = require('./_lib/admin');
+const { applyPurchase } = require('./_lib/purchases');
+const { newId } = require('./_lib/crypto');
+const { PRICING } = require('./_lib/config');
 
-exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') return ok({});
-  if (event.httpMethod !== 'POST') return bad('POST only', 405);
-  const token = event.headers['x-admin-token'] || event.headers['X-Admin-Token'];
-  const expected = process.env.PASTEBOARD_ADMIN_TOKEN;
-  if (!expected) return bad('PASTEBOARD_ADMIN_TOKEN is not set on the server.', 500);
-  if (token !== expected) return bad('Not authorized.', 401);
-
+/* Admin-only: record an offline payment (e.g. a bank transfer) and grant what was bought, using the same code path
+   as a provider payment. Body: { accountEmail, type: 'premium'|'seats', units?, amountUSD?, note? } */
+exports.handler = route('POST', async (event) => {
+  requireAdmin(event);
   const b = parseBody(event);
-  const accountEmail = String(b.accountEmail || '').trim().toLowerCase();
-  const amountUSD = Number(b.amountUSD);
-  if (!accountEmail) return bad('accountEmail is required.');
-  if (!isFinite(amountUSD) || amountUSD <= 0) return bad('amountUSD must be a positive number.');
-
-  const account = await store.accounts.get(accountEmail);
-  if (!account) return bad('No account uses that email.', 404);
-
-  const entry = {
-    accountEmail, amountUSD,
-    plan: b.plan && ['free', 'freeplus', 'premium', 'premiumpro'].includes(b.plan) ? b.plan : account.plan,
-    method: String(b.method || 'manual').slice(0, 40),
-    note: String(b.note || '').slice(0, 300),
-    at: Date.now(),
-  };
-  await store.payments.add(entry);
-  return ok({ recorded: entry });
-};
+  const email = String(b.accountEmail || '').trim().toLowerCase();
+  const type = b.type === 'seats' ? 'seats' : b.type === 'premium' ? 'premium' : null;
+  if (!email || !type) throw httpError(400, 'accountEmail and type (premium|seats) are required.');
+  if (!(await store.accounts.get(email))) throw httpError(404, 'No account uses that email.');
+  const units = type === 'seats' ? Math.max(1, parseInt(b.units, 10) || 1) : 1;
+  const amountUSD = b.amountUSD != null ? Number(b.amountUSD) : (type === 'premium' ? PRICING.premiumUSD : units * PRICING.extraSeatUSD);
+  const r = await applyPurchase(email, { provider: 'manual', type, units, orderId: newId('manual'), amountCents: Math.round(amountUSD * 100), currency: 'USD', test: false });
+  return ok({ recorded: r.applied });
+});
