@@ -15,6 +15,7 @@
 
       <section id="view-login">
         <h1>Log in to PasteBoard</h1>
+<<<<<<< HEAD
         <p class="auth__sub">Manage your account, billing and team. Your clipboard, snippets and files stay on your computer.</p>
         <div class="banner-note" id="notice" hidden style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px"></div>
         <form id="login-form" novalidate>
@@ -29,23 +30,48 @@
         </form>
         <p class="auth__foot">No account yet? <a href="../signup/index.html">Create one</a><br><span class="pd-muted">Joining a team? Use the invitation link in your email.</span></p>
         <p class="pd-help" style="margin-top:10px">One person, one signed-in device: logging in here signs you out anywhere else.</p>
+=======
+        <p class="auth__sub">Manage your account, team and devices. The extension itself stays simple.</p>
+        <!-- Social login intentionally left out for now (Supabase auth + Google OAuth to follow once API keys
+             are in place). Email + password below hits the Netlify function backend directly. -->
+        <form id="login-form" novalidate>
+          <div class="pd-field"><label class="pd-label" for="email">Email</label><input class="pd-input" id="email" type="email" autocomplete="email" placeholder="you@company.com" required></div>
+          <div class="pd-field"><label class="pd-label" for="password">Password</label>
+            <div class="pd-pw-wrap"><input class="pd-input" id="password" type="password" autocomplete="current-password" required><button class="pd-pw-toggle" type="button" data-pw-toggle="password">Show</button></div>
+          </div>
+          <button class="pd-btn pd-btn--primary pd-btn--lg pd-btn--block" id="submit" type="submit">Log in</button>
+          <p class="pd-help" id="err" style="color:var(--pd-danger)" role="alert"></p>
+        </form>
+        <p class="auth__foot">No account yet? <a href="../signup/index.html">Create one</a> &middot; Joining a team? <a href="../signup/index.html?mode=join">Request access</a></p>
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
       </section>
 
       <section id="view-done" hidden>
         <h1>You are logged in</h1>
         <p class="auth__sub" id="done-msg"></p>
         <a class="pd-btn pd-btn--primary pd-btn--lg pd-btn--block" id="go" href="../dashboard/index.html">Open dashboard</a>
+<<<<<<< HEAD
         <p class="auth__foot" id="ext-note" hidden></p>
+=======
+        <p class="auth__foot" id="ext-note" hidden>You came from the extension. You can close this tab and return to Chrome.</p>
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
         <button class="pd-btn pd-btn--ghost pd-btn--block" id="switch" style="margin-top:8px">Log in as someone else</button>
       </section>
     </div>
   </main>
+<<<<<<< HEAD
   <footer class="footer"><div class="container"><span>&copy; PasteBoard</span><nav aria-label="Legal"><a href="../pricing/index.html">Pricing</a><a href="../landing/index.html#faq">FAQ</a><a href="../terms/index.html">Terms</a><a href="../privacy/index.html">Privacy</a><a href="../refunds/index.html">Refunds</a></nav></div></footer>
+=======
+  <footer class="footer"><div class="container"><span>&copy; PasteBoard</span><nav aria-label="Legal"><a href="../pricing/index.html">Pricing</a><a href="../terms/index.html">Terms</a><a href="../privacy/index.html">Privacy</a><a href="../refunds/index.html">Refunds</a></nav></div></footer>
+  <script src="../assets/shared/ui/pd-core.js"></script>
+  <script src="../assets/shared/ui/pd-storage.js"></script>
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
   <script src="../assets/api.js"></script>
   <script>
     (function () {
       const $ = (id) => document.getElementById(id);
       const params = new URLSearchParams(location.search);
+<<<<<<< HEAD
       const show = (id) => ['view-login', 'view-done'].forEach((v) => ($(v).hidden = v !== id));
       const reasons = { elsewhere: 'You were signed out because this account signed in on another device.', revoked: 'Your access was revoked by the account owner.', expired: 'Your session expired. Please log in again.', reset: 'Password updated. Log in with your new password.' };
       if (reasons[params.get('reason')]) { $('notice').textContent = reasons[params.get('reason')]; $('notice').hidden = false; }
@@ -64,11 +90,43 @@
       }
       const existing = PBApi.session();
       if (existing && PBApi.token() && params.get('switch') !== '1') done(existing);
+=======
+      const next = '../dashboard/index.html';
+      const show = (id) => ['view-login', 'view-done'].forEach((v) => ($(v).hidden = v !== id));
+
+      // When opened from the extension (its "Log in" / "Link this device" button), relay the resulting session
+      // into the extension's own local storage via the website<->extension bridge, so the extension can use it
+      // to push usage analytics and show "linked as" status — without ever showing a login form itself.
+      async function linkExtension(s) {
+        if (params.get('source') !== 'extension') return null;
+        try {
+          await PD.db.init({ adapter: 'web' });
+          if (PD.db.adapter.name !== 'extension-bridge') return false; // opened without the extension present
+          await PD.db.set('account', { token: s.token, accountEmail: s.accountEmail, deviceId: s.deviceId, role: s.role, name: s.name || s.accountEmail, linkedAt: Date.now() });
+          return true;
+        } catch (e) { return false; }
+      }
+
+      const existing = PBApi.session();
+      if (existing && params.get('switch') !== '1') done(existing);
+      async function done(s) {
+        $('done-msg').textContent = 'Signed in as ' + (s.name || s.accountEmail) + (s.role === 'owner' ? ' (account owner)' : '');
+        $('go').href = next;
+        if (params.get('source') === 'extension') {
+          $('ext-note').hidden = false;
+          $('ext-note').textContent = 'Linking to your extension\u2026';
+          const linked = await linkExtension(s);
+          $('ext-note').textContent = linked ? 'Linked to your extension on this device. You can close this tab.' : 'Could not link to the extension automatically \u2014 open the extension and try again, or just close this tab.';
+        }
+        show('view-done');
+      }
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
       $('login-form').onsubmit = async (e) => {
         e.preventDefault(); $('err').textContent = ''; $('submit').disabled = true;
         try { const data = await PBApi.login({ email: $('email').value.trim(), password: $('password').value }); PBApi.setSession(data); done(data); }
         catch (err) { $('err').textContent = err.message; } finally { $('submit').disabled = false; }
       };
+<<<<<<< HEAD
       $('passkey').onclick = async () => {
         $('err').textContent = '';
         try { const data = await PBApi.passkeyLogin($('email').value.trim()); PBApi.setSession(data); done(data); }
@@ -76,6 +134,12 @@
       };
       $('switch').onclick = async () => { await PBApi.logout(); PBApi.signOut(); location.href = 'index.html?switch=1'; };
       document.querySelectorAll("[data-pw-toggle]").forEach(function(b){b.onclick=function(){var i=document.getElementById(b.dataset.pwToggle),s=i.type==="password";i.type=s?"text":"password";b.textContent=s?"Hide":"Show";};});
+=======
+      $('switch').onclick = () => { PBApi.signOut(); location.href = 'index.html?switch=1'; };
+      document.querySelectorAll('[data-pw-toggle]').forEach((btn) => {
+        btn.onclick = () => { const input = $(btn.dataset.pwToggle); const show = input.type === 'password'; input.type = show ? 'text' : 'password'; btn.textContent = show ? 'Hide' : 'Show'; };
+      });
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
     })();
   </script>
 </body>

@@ -1,4 +1,5 @@
 /*
+<<<<<<< HEAD
  * PasteBoard bridge — injected ONLY on https://pastedeck.netlify.app (see manifest).
  * It answers exactly four message types from the website:
  *   ping    -> is the extension installed (version)
@@ -8,11 +9,17 @@
  *   "this computer only" view of desks, snippets, tasks etc.
  * It can never read or write `pd:account` (the session), `pd:outbox` or anything outside the allow-list, and the
  * session token is never sent through window.postMessage in either direction.
+=======
+ * PasteBoard bridge — runs ONLY on pasteboard.com and localhost (see manifest).
+ * Lets the website dashboard read/write the extension's local data until real cloud sync exists.
+ * Only keys starting with "pd:" / "pdb:" are reachable. Replace with authenticated cloud sync (docs/architecture.md).
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
  */
 (function () {
   'use strict';
   if (window.__pdBridge) return;
   window.__pdBridge = true;
+<<<<<<< HEAD
   const origin = window.location.origin;
   const WORKSPACE = ['meta', 'desks', 'snippets', 'sessions', 'blueprints', 'tasks', 'history', 'files', 'company', 'team', 'settings', 'analytics', 'devices', 'leads'];
   const okKey = (k) => typeof k === 'string' && (k.indexOf('pdb:') === 0 || (k.indexOf('pd:') === 0 && WORKSPACE.indexOf(k.slice(3)) >= 0));
@@ -31,6 +38,17 @@
         const r = await send({ type: 'PD_PAIR', code: d.code });
         return reply(r.error ? { type: 'result', error: r.error } : { type: 'result', data: r });
       }
+=======
+  const okKey = (k) => typeof k === 'string' && (k.indexOf('pd:') === 0 || k.indexOf('pdb:') === 0);
+  const origin = window.location.origin;
+
+  window.addEventListener('message', async (e) => {
+    const d = e.data;
+    if (e.source !== window || !d || d.pd !== 'site') return;
+    const reply = (o) => window.postMessage(Object.assign({ pd: 'ext', id: d.id }, o), origin);
+    try {
+      if (d.type === 'ping') return reply({ type: 'pong', version: chrome.runtime.getManifest().version });
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
       if (d.type === 'get') return reply({ type: 'result', data: await chrome.storage.local.get((d.keys || []).filter(okKey)) });
       if (d.type === 'set') {
         const o = {};
@@ -45,7 +63,11 @@
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
     const o = {};
+<<<<<<< HEAD
     Object.keys(changes).forEach((k) => { if (okKey(k) && k.indexOf('pd:') === 0) o[k] = changes[k].newValue; });
+=======
+    Object.keys(changes).forEach((k) => { if (k.indexOf('pd:') === 0) o[k] = changes[k].newValue; });
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
     if (Object.keys(o).length) window.postMessage({ pd: 'ext', type: 'changed', changes: o }, origin);
   });
 })();

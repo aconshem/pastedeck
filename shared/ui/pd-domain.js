@@ -33,6 +33,7 @@
   };
 
   /* ---------------- plan & limits ---------------- */
+<<<<<<< HEAD
   /* The plan is NEVER read from anything the user can type or toggle locally (the old settings.plan switch is gone).
      It comes from the server's entitlement for the linked account, stored in `account.entitlement` by the service
      worker after it asks the server. No linked account, a lapsed trial, a revoked member, or an entitlement the
@@ -50,19 +51,32 @@
       return 'premium';
     },
     setServerPlan(id) { this._serverPlan = PD.PLANS[id] ? id : null; },
+=======
+  PD.plan = {
+    id() { const p = db.get('settings').plan || PD.CONFIG.defaultPlan; return PD.PLAN_ALIASES[p] || p; },
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
     info() { return PD.PLANS[this.id()] || PD.PLANS.free; },
     can(feature) { return !!this.info()[feature]; },
     count(kind) { return kind === 'sessions' ? PD.sessions.live().length : (db.get(kind) || []).length; },
     canAdd(kind) {
       const limit = this.info()[kind], count = this.count(kind);
       const ok = count < limit;
+<<<<<<< HEAD
       const one = { snippets: 'snippet', desks: 'desk', sessions: 'session at a time' }, many = { snippets: 'snippets', desks: 'desks', sessions: 'sessions at a time' };
       return { ok, limit, count, message: ok ? '' : 'The Free plan allows ' + limit + ' ' + (limit === 1 ? one[kind] : many[kind]) + '. Upgrade to Premium for unlimited.' };
+=======
+      const names = { snippets: 'snippets', desks: 'desks', sessions: 'sessions' };
+      return { ok, limit, count, message: ok ? '' : 'The ' + this.info().label + ' plan allows ' + limit + ' ' + names[kind] + '. Upgrade to add more.' };
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
     },
     require(feature, label) {
       if (this.can(feature)) return true;
       throw limitError(label + ' is part of Premium.');
     },
+<<<<<<< HEAD
+=======
+    set(id) { id = PD.PLAN_ALIASES[id] || id; if (PD.PLANS[id]) return db.patch('settings', { plan: id }); },
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
   };
 
   /* ---------------- desks ---------------- */

@@ -5,8 +5,13 @@
  *   Adapters: chrome.storage.local (extension) | extension-bridge (website talking to the extension)
  *             | localStorage (website demo mode) | memory (tests)
  *
+<<<<<<< HEAD
  * Every record carries { id, createdAt, updatedAt, rev }.
  * PasteBoard is local-first: workspace content never leaves the device (the server only ever sees account/billing data and aggregate counts).
+=======
+ * Every record carries { id, createdAt, updatedAt, rev } so a cloud sync adapter can be plugged in
+ * later WITHOUT changing data models. When the `cloudSync` flag is on, every write is also appended to `pd:outbox`.
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
  */
 (function (g) {
   'use strict';
@@ -69,7 +74,11 @@
     };
   }
 
+<<<<<<< HEAD
   /* Website <-> extension bridge (content/bridge.js answers these messages on pastedeck.netlify.app only). */
+=======
+  /* Website <-> extension bridge (content/bridge.js answers these messages on pasteboard.com / localhost). */
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
   function bridgeAdapter() {
     let seq = 0; const pending = new Map(); const subs = [];
     g.addEventListener('message', (e) => {
@@ -147,6 +156,10 @@
     _persist(ns) { return Promise.resolve(db.adapter && db.adapter.save({ [K(ns)]: db.cache[ns] })).catch((e) => console.error('[PasteBoard] storage write failed', ns, e)); },
     _commit(ns, id, op) {
       const p = db._persist(ns);
+<<<<<<< HEAD
+=======
+      if (ns !== 'outbox' && PD.flags.get('cloudSync')) { db.cache.outbox.push({ ns, id, op, ts: Date.now() }); db._persist('outbox'); }
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
       db._emit(ns, 'local');
       return p;
     },

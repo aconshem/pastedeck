@@ -11,13 +11,19 @@
   PD.SCHEMA_VERSION = 1;
 
   PD.CONFIG = {
+<<<<<<< HEAD
     siteUrl: 'https://pastedeck.netlify.app',   // canonical production URL. A developer can override it in the extension's Options > Developer.
     defaultPlan: 'free',                        // production default. The real plan only ever comes from the server (see PD.plan in pd-domain.js).
+=======
+    siteUrl: 'https://pasteboard.com',   // extension setting can override (dev: http://localhost:8080)
+    defaultPlan: 'premium',             // DEV BUILD: everything unlocked so every feature can be tried. Set to 'free' before public launch.
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
     historyLimit: 200,
     maxFileBytes: 5 * 1024 * 1024,
     maxClipImageBytes: 1.5 * 1024 * 1024,
     maxClipTextChars: 5000,
     sessionFileNote: 'Session files are deleted when their session expires.',
+<<<<<<< HEAD
     premiumPriceUSD: 25,            // one-time. Display only: the server (netlify/functions/_lib/config.js) decides what is charged.
     extraSeatPriceUSD: 2.5,         // one-time, per additional person. Display only.
     includedSeats: 5,
@@ -26,6 +32,15 @@
 
   /* Feature flags. Overridable per user in settings.flags. They can only switch a feature OFF locally; they never
      unlock anything — what a plan includes is decided by PD.PLANS + the server's entitlement. */
+=======
+    extraDevicePriceUSD: 2.5,
+    cloudSyncPriceUSD: 10,
+    cloudSyncByoPriceUSD: 7,
+    trialDays: 14,
+  };
+
+  /* Feature flags. Backend-dependent features ship scaffolded but OFF. Overridable per user in settings.flags. */
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
   PD.FLAGS = {
     commandBar: true,
     blueprints: true,
@@ -36,6 +51,7 @@
     textExpansion: true,
     floatingPill: true,
     contextDetection: true,
+<<<<<<< HEAD
   };
 
   /* Exactly two tiers. A "seat" is one person (they may use PasteBoard on several computers).
@@ -48,6 +64,26 @@
   };
   /* Old ids from earlier builds (pricing overhaul, retired tiers) map onto the two current tiers. */
   PD.PLAN_ALIASES = { pro: 'premium', premiumpro: 'premium', freeplus: 'free' };
+=======
+    devPlanSwitcher: true,
+    // ---- backend-dependent (scaffolded) ----
+    cloudSync: false,
+    realAuth: false,
+    teamBackend: false,
+    payments: false,
+    deviceLicensing: false,
+    aiParsing: false,
+  };
+
+  PD.PLANS = {
+    free:       { id: 'free',       label: 'Free',              price: 0,  billing: 'free',    snippets: 4,        desks: 1,        sessions: 1,        devices: 1,        files: false, blueprints: false, autofill: false, cloudSync: false },
+    freeplus:   { id: 'freeplus',   label: 'Free + Email',      price: 0,  billing: 'free',    snippets: 7,        desks: 2,        sessions: 2,        devices: 1,        files: false, blueprints: false, autofill: false, cloudSync: false },
+    premium:    { id: 'premium',    label: 'Premium',           price: 20, billing: 'one-time', snippets: Infinity, desks: Infinity, sessions: Infinity, devices: 5,        files: true,  blueprints: true,  autofill: true,  cloudSync: false },
+    premiumpro: { id: 'premiumpro', label: 'Premium Pro',       price: 40, billing: 'one-time', snippets: Infinity, desks: Infinity, sessions: Infinity, devices: Infinity, files: true,  blueprints: true,  autofill: true,  cloudSync: true, paused: true },
+  };
+  /* Legacy id from before the pricing overhaul — keeps old local data (settings.plan: 'pro') working. */
+  PD.PLAN_ALIASES = { pro: 'premium' };
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
 
   /* Estimated seconds saved per action (used for the analytics estimate). */
   PD.TIME_SAVED = { snippet: 20, autofillField: 6, captureField: 5 };

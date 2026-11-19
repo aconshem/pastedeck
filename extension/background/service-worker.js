@@ -32,7 +32,10 @@ chrome.runtime.onStartup.addListener(async () => { await ready; PD.devices.regis
 function boot() {
   chrome.alarms.create('pd-tick', { periodInMinutes: 1, delayInMinutes: 0.1 });
   chrome.alarms.create('pd-analytics-sync', { periodInMinutes: 5, delayInMinutes: 1 });
+<<<<<<< HEAD
   ready.then(syncEntitlement);
+=======
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
   PD.sessions.sweep();
   syncTaskAlarms();
   updateBadge();
@@ -83,6 +86,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   updateBadge();
 });
 
+<<<<<<< HEAD
 /* ------------------------------------------------------------------ account link, entitlement, analytics
    Connect account: the person logs in on the website (https://pastedeck.netlify.app/login?source=extension). The page
    asks the server for a ONE-TIME pairing code and hands only that code to this extension (content/bridge.js). We
@@ -145,6 +149,26 @@ async function syncAnalytics() {
     const res = await api('analytics-sync', acct.token, { consent: true, installId: db.get('meta').deviceId, day: PD.util.dayKey(), snippets: t.snippets, autofills: t.autofills, captures: t.captures, savedSec: t.savedSec });
     if (res.status === 401 || res.status === 403) { const d = await res.json().catch(() => ({})); unlink(REASONS[d.code] || REASONS.SESSION_INVALID); }
   } catch (e) { /* offline */ }
+=======
+/* ------------------------------------------------------------------ account link + analytics sync
+   The extension never shows a login form (see docs/architecture.md). Instead, logging in or signing up on the
+   website with ?source=extension relays the resulting session token into PD.db's 'account' key via the normal
+   website<->extension bridge (content/bridge.js) — see website/login & signup's linkExtension(). Once linked,
+   this pushes the device's own daily usage totals up as a heartbeat + team-wide analytics feed. */
+async function syncAnalytics() {
+  const acct = db.get('account');
+  if (!acct || !acct.token) return;
+  const base = String(db.get('settings').siteUrl || PD.CONFIG.siteUrl).replace(/\/+$/, '');
+  try {
+    const t = PD.analytics.today();
+    const res = await fetch(base + '/.netlify/functions/analytics-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + acct.token },
+      body: JSON.stringify({ day: PD.util.dayKey(), snippets: t.snippets, autofills: t.autofills, captures: t.captures, savedSec: t.savedSec }),
+    });
+    if (res.status === 401 || res.status === 403) db.set('account', null); // revoked/expired — silently unlink
+  } catch (e) { /* offline, or no backend at this siteUrl — try again next tick */ }
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
 }
 
 chrome.notifications.onButtonClicked.addListener(async (id, idx) => {
@@ -199,6 +223,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
 /* ------------------------------------------------------------------ site links (dashboard / login / devices) */
 function siteUrl(page) {
+<<<<<<< HEAD
   return PD.CONFIG.siteUrl.replace(/\/+$/, '') + ({
     dashboard: '/dashboard/index.html',
     devices: '/dashboard/index.html#team',
@@ -206,6 +231,15 @@ function siteUrl(page) {
     signup: '/signup/index.html?source=extension',
     pricing: '/pricing/index.html',
     faq: '/landing/index.html#faq',
+=======
+  const base = String(db.get('settings').siteUrl || PD.CONFIG.siteUrl).replace(/\/+$/, '');
+  return base + ({
+    dashboard: '/dashboard/index.html',
+    devices: '/dashboard/index.html#devices',
+    login: '/login/index.html?source=extension',
+    signup: '/signup/index.html?source=extension',
+    pricing: '/landing/index.html#pricing',
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
   }[page] || '/landing/index.html');
 }
 
@@ -244,10 +278,14 @@ async function handle(msg, sender) {
     }
     case 'PD_OPEN': { chrome.tabs.create({ url: siteUrl(msg.page) }); return { ok: true }; }
     case 'PD_SITE_URL': return { url: siteUrl(msg.page) };
+<<<<<<< HEAD
     case 'PD_UNLINK': { await unlink(null); return { ok: true }; }
     case 'PD_PAIR': return pair(msg.code, sender);
     case 'PD_LINK_STATUS': { const a = db.get('account'); return a && a.token ? { linked: true, name: a.name, plan: PD.plan.id() } : { linked: false }; }
     case 'PD_SET_CONSENT': { const a = db.get('account'); if (a) await db.set('account', Object.assign({}, a, { analyticsConsent: !!msg.value })); if (msg.value) syncAnalytics(); return { ok: true }; }
+=======
+    case 'PD_UNLINK': { await db.set('account', null); return { ok: true }; }
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
     case 'PD_SYNC_NOW': { await syncAnalytics(); return { ok: true }; }
     default: return { error: 'unknown message ' + msg.type };
   }

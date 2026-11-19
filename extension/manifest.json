@@ -22,7 +22,10 @@
   "side_panel": { "default_path": "sidepanel/sidepanel.html" },
   "options_ui": { "page": "options/options.html", "open_in_tab": true },
   "background": { "service_worker": "background/service-worker.js" },
+<<<<<<< HEAD
   "host_permissions": ["https://pastedeck.netlify.app/*"],
+=======
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
   "permissions": [
     "storage",
     "unlimitedStorage",
@@ -50,7 +53,11 @@
       "all_frames": false
     },
     {
+<<<<<<< HEAD
       "matches": ["https://pastedeck.netlify.app/*"],
+=======
+      "matches": ["https://pasteboard.com/*", "https://*.pasteboard.com/*", "http://localhost/*", "http://127.0.0.1/*"],
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
       "js": ["content/bridge.js"],
       "run_at": "document_start"
     }

@@ -11,6 +11,7 @@
   function render() {
     const s = db.get('settings');
     const plan = PD.plan.id();
+<<<<<<< HEAD
     const acct = db.get('account'), ent = acct && acct.entitlement;
     root.innerHTML =
       '<div class="pd-card card"><h2>Account</h2>' +
@@ -21,6 +22,15 @@
         : (s.unlinkNotice ? '<div class="item"><div><b>Signed out.</b><small>' + esc(s.unlinkNotice.reason) + '</small></div></div>' : '') +
           '<div class="item"><div>Not connected<small>You are on the Free plan on this computer. Connecting your PasteBoard account unlocks the plan you have and lets your team owner manage your seat. Your content stays on this computer either way.</small></div><div class="ctl auto"><button class="pd-btn" data-a="signup">Create account</button> <button class="pd-btn pd-btn--primary" data-a="login">' + (s.unlinkNotice ? 'Reconnect account' : 'Connect account') + '</button></div></div>') +
       '<div class="item"><div>Dashboard<small>Billing, team, invitations and analytics. Never your clipboard or snippets.</small></div><div class="ctl auto"><button class="pd-btn" data-a="dashboard">Open dashboard</button></div></div></div>' +
+=======
+    const acct = db.get('account');
+    root.innerHTML =
+      '<div class="pd-card card"><h2>Account</h2>' +
+      (acct
+        ? '<div class="item"><div>Linked as <b>' + esc(acct.name) + '</b> (' + (acct.role === 'owner' ? 'owner' : 'member') + ')<small>' + esc(acct.accountEmail) + ' \u00b7 usage analytics sync to this account every few minutes.</small></div><div class="ctl auto"><button class="pd-btn pd-btn--danger" data-a="unlink">Unlink this device</button></div></div>'
+        : '<div class="item"><div>Not linked to an account yet<small>Linking lets the owner see this device in Team &amp; Devices and in Analytics. Log in or sign up on the website \u2014 the extension itself never shows a login form.</small></div><div class="ctl auto"><button class="pd-btn" data-a="signup">Create account</button> <button class="pd-btn" data-a="login">Log in</button></div></div>') +
+      '<div class="item"><div>Dashboard<small>Team, company details, analytics.</small></div><div class="ctl auto"><button class="pd-btn" data-a="dashboard">Open dashboard</button> <button class="pd-btn" data-a="devices">Manage devices</button></div></div></div>' +
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
 
       '<div class="pd-card card"><h2>Standard values</h2>' +
       '<div class="item" style="display:block"><div style="margin-bottom:10px">Facts that are true no matter who you\'re replying to — salary, location, working hours. Use them in any snippet as <code>{{standard.salary}}</code> etc. ' +
@@ -41,8 +51,18 @@
       '<div class="item"><div>Never record on these sites<small>One per line, e.g. <code>bank.example.com</code></small></div><div class="ctl"><textarea class="pd-textarea" data-s="ignoreHosts" style="min-height:64px">' + esc((s.ignoreHosts || []).join('\n')) + '</textarea></div></div>' +
       '<div class="item"><div>Clear history now<small>Pinned items are kept.</small></div><div class="ctl auto"><button class="pd-btn pd-btn--danger" data-a="clear-history">Clear history</button></div></div></div>' +
 
+<<<<<<< HEAD
       '<div class="pd-card card"><h2>Developer</h2>' +
       '<div class="item"><div>Feature flags<small>Local switches only. They can turn a feature off, never unlock one.</small></div></div>' +
+=======
+      '<div class="pd-card card"><h2>Plan</h2>' +
+      '<div class="item"><div>Current plan: <b>' + esc(PD.PLANS[plan].label) + '</b><small>Billing is not connected yet. This switch exists so you can test every limit while building.</small></div>' +
+      (PD.flags.get('devPlanSwitcher') ? '<div class="ctl"><select class="pd-select" data-s="plan">' + Object.keys(PD.PLANS).map((k) => '<option value="' + k + '"' + (k === plan ? ' selected' : '') + '>' + PD.PLANS[k].label + '</option>').join('') + '</select></div>' : '') + '</div></div>' +
+
+      '<div class="pd-card card"><h2>Developer</h2>' +
+      '<div class="item"><div>Website address<small>Where Log in, Dashboard and Manage devices open. Use <code>http://localhost:8080</code> while developing.</small></div><div class="ctl"><input class="pd-input" data-s="siteUrl" value="' + esc(s.siteUrl || PD.CONFIG.siteUrl) + '"></div></div>' +
+      '<div class="item"><div>Feature flags<small>Backend features ship switched off.</small></div></div>' +
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
       '<div class="flags">' + Object.keys(PD.FLAGS).map((k) => '<div class="item"><div><code>' + k + '</code></div>' + sw('flag:' + k, PD.flags.get(k)) + '</div>').join('') + '</div></div>' +
 
       '<div class="pd-card card"><h2>Your data</h2>' +
@@ -67,7 +87,12 @@
     if (k.indexOf('flag:') === 0) { const flags = Object.assign({}, db.get('settings').flags); flags[k.slice(5)] = t.checked; db.patch('settings', { flags }); return; }
     let v = t.type === 'checkbox' ? t.checked : t.value;
     if (k === 'ignoreHosts') v = t.value.split('\n').map((x) => x.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')).filter(Boolean);
+<<<<<<< HEAD
     if (k === 'analyticsConsent') { chrome.runtime.sendMessage({ type: 'PD_SET_CONSENT', value: v }); PD.ui.toast(v ? 'Sharing usage counts' : 'Stopped sharing'); return; }
+=======
+    if (k === 'siteUrl') v = t.value.trim().replace(/\/+$/, '') || PD.CONFIG.siteUrl;
+    if (k === 'plan') { PD.plan.set(v); render(); PD.ui.toast('Plan changed to ' + PD.PLANS[v].label); return; }
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
     db.patch('settings', { [k]: v });
     PD.ui.toast('Saved');
   });
@@ -79,8 +104,13 @@
   document.body.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-a]'); if (!b) return;
     const a = b.dataset.a;
+<<<<<<< HEAD
     if (['login', 'dashboard', 'signup', 'pricing'].indexOf(a) >= 0) chrome.runtime.sendMessage({ type: 'PD_OPEN', page: a });
     else if (a === 'unlink') { if (await PD.ui.confirm('Unlink this computer? It goes back to the Free plan and stops sending usage counts until you connect again. Your local data is not touched.', { confirmLabel: 'Unlink' })) { await chrome.runtime.sendMessage({ type: 'PD_UNLINK' }); render(); } }
+=======
+    if (['login', 'devices', 'dashboard', 'signup'].indexOf(a) >= 0) chrome.runtime.sendMessage({ type: 'PD_OPEN', page: a });
+    else if (a === 'unlink') { if (await PD.ui.confirm('Unlink this device? It will stop sending usage analytics until you log in again.', { confirmLabel: 'Unlink' })) { await chrome.runtime.sendMessage({ type: 'PD_UNLINK' }); render(); } }
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
     else if (a === 'shortcuts') chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
     else if (a === 'clear-history') { if (await PD.ui.confirm('Clear clipboard history? Pinned items are kept.', { danger: true, confirmLabel: 'Clear' })) { PD.history.clear(true); PD.ui.toast('History cleared'); } }
     else if (a === 'export') U.download('pasteboard-backup-' + U.dayKey() + '.json', JSON.stringify(db.exportAll(), null, 2));

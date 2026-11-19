@@ -6,7 +6,11 @@
  *   - Desks, snippets, sessions, blueprints, files, clipboard history, tasks, company details -> this
  *     device's own local data (the extension's storage, reached through the bridge, or this browser's
  *     localStorage when there's no extension to bridge to). Premium accounts move this between devices
+<<<<<<< HEAD
  *     only through Export / Import (Settings) — there is no cloud sync.
+=======
+ *     only through Export / Import (Settings) — there is no cloud sync yet (Premium Pro, paused).
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
  */
 (async function () {
   'use strict';
@@ -18,11 +22,16 @@
   await PD.db.init({ adapter: 'web' });
   const db = PD.db;
   const bridged = db.adapter.name === 'extension-bridge';
+<<<<<<< HEAD
+=======
+  if (!bridged) PD.devices.registerCurrent();
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
 
   let ACC = null, backendErr = null;
   async function loadAccount() {
     try { ACC = await PBApi.account(); backendErr = null; }
     catch (e) { ACC = null; backendErr = e.message; }
+<<<<<<< HEAD
     syncPlan();
   }
   PBApi.onSignedOut = (code) => { location.replace('../login/index.html?reason=' + (code === 'SIGNED_IN_ELSEWHERE' ? 'elsewhere' : code === 'ACCESS_REVOKED' ? 'revoked' : code === 'ACCESS_REMOVED' ? 'removed' : 'expired')); };
@@ -32,6 +41,14 @@
   const PAGES = [
     ['home', 'Home', 'home'], ['desks', 'Desks', 'layers'], ['history', 'Clipboard History', 'clipboard'], ['analytics', 'Analytics', 'chart'],
     ['team', 'Team', 'users'], ['billing', 'Billing & plan', 'star'], ['company', 'Company', 'building'], ['tasks', 'Tasks', 'tasks'], ['settings', 'Settings & security', 'settings'],
+=======
+  }
+  await loadAccount();
+
+  const PAGES = [
+    ['home', 'Home', 'home'], ['desks', 'Desks', 'layers'], ['history', 'Clipboard History', 'clipboard'], ['analytics', 'Analytics', 'chart'],
+    ['team', 'Team & Devices', 'users'], ['company', 'Company', 'building'], ['tasks', 'Tasks', 'tasks'], ['settings', 'Settings', 'settings'],
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
   ];
   const S = { deskId: null, histQ: '' };
   const canManage = () => !!ACC && (ACC.you.role === 'owner' || ACC.you.role === 'admin');
@@ -51,7 +68,11 @@
     document.getElementById('side').innerHTML =
       '<a class="brand" href="../landing/index.html"><img src="../assets/shared/icons/icon-48.png" alt="">PasteBoard</a><nav>' +
       PAGES.map((p) => '<a class="nav" href="#' + p[0] + '"' + (p[0] === r ? ' aria-current="page"' : '') + '>' + I(p[2], 16) + p[1] + '</a>').join('') + '</nav><div class="spacer"></div>' +
+<<<<<<< HEAD
       '<div class="plan-chip"><b>' + esc(ACC ? PD.PLANS[ACC.plan].label : 'Account offline') + '</b>' + (ACC && ACC.plan === 'premium' ? (ACC.planSource === 'trial' ? 'Free trial' : 'All features unlocked') : ACC ? '<a href="#billing">Upgrade to Premium \u00b7 $25</a>' : '') + '</div>';
+=======
+      '<div class="plan-chip"><b>' + esc(ACC ? PD.PLANS[ACC.plan].label : 'Account offline') + '</b>' + (ACC && (ACC.plan === 'premium' || ACC.plan === 'premiumpro') ? 'All features unlocked' : ACC ? 'Upgrade for files and blueprints' : '') + '</div>';
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
     document.getElementById('top').innerHTML =
       '<span class="pd-badge ' + (bridged ? 'pd-badge--ok' : 'pd-badge--warn') + '" title="' + (bridged ? 'Reading and writing your extension data' : 'Desks/snippets/etc. are stored in this browser only') + '">' + (bridged ? 'Connected to extension' : 'This browser only \u2014 install the extension for your real data') + '</span><div class="grow"></div>' +
       (ACC ? '<span class="pd-sm pd-muted">' + esc(ACC.you.name) + ' \u00b7 ' + (ACC.you.role === 'owner' ? 'Owner' : 'Member') + '</span>' : '<span class="pd-sm pd-muted">' + esc(session.accountEmail || '') + '</span>') +
@@ -61,7 +82,11 @@
   function render() {
     renderShell();
     const r = route();
+<<<<<<< HEAD
     const fn = { home, desks, history, analytics, team, billing, company, tasks, settings }[r];
+=======
+    const fn = { home, desks, history, analytics, team, company, tasks, settings }[r];
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
     const y = window.scrollY;
     content.innerHTML = r === 'analytics' && !canSeeAnalytics() ? lockedAnalytics() : fn();
     document.title = PAGES.find((p) => p[0] === r)[1] + ' \u00b7 PasteBoard';
@@ -73,6 +98,7 @@
     content.querySelectorAll('[data-blob]').forEach(async (n) => { const u = await PD.blobs.get(n.dataset.blob); if (u) { const img = document.createElement('img'); img.alt = ''; img.src = u; n.appendChild(img); } });
   }
   function lockedAnalytics() {
+<<<<<<< HEAD
     return head('Analytics') + '<div class="lock pd-card">' + I('lock', 28) + '<p style="margin:10px 0 4px;font-weight:600">Analytics is limited to the account owner</p><p class="pd-muted pd-sm">Ask ' + esc((ACC && ACC.members.find((d) => d.role === 'owner') || {}).name || 'the account owner') + ' to grant you access from the Team page.</p></div>';
   }
   function trialBanner() {
@@ -83,6 +109,15 @@
     }
     if (ACC.plan === 'free' && ACC.trialAvailable && ACC.you.role === 'owner') return '<div class="banner">' + I('star', 16) + '<span>Try every Premium feature free for 14 days \u2014 no card needed. <a href="#billing">Start trial</a></span></div>';
     return '';
+=======
+    return head('Analytics') + '<div class="lock pd-card">' + I('lock', 28) + '<p style="margin:10px 0 4px;font-weight:600">Analytics is limited to the account owner</p><p class="pd-muted pd-sm">Ask ' + esc((ACC && ACC.devices.find((d) => d.role === 'owner') || {}).name || 'the account owner') + ' to grant you access from the Team & Devices page.</p></div>';
+  }
+  function trialBanner() {
+    if (!ACC || !ACC.trial) return '';
+    const days = Math.ceil((ACC.trial.endsAt - Date.now()) / 86400000);
+    if (days > 0) return '<div class="banner">' + I('star', 16) + '<span><b>' + days + '-day free trial</b> \u2014 every ' + esc(PD.PLANS[ACC.plan].label) + ' feature is unlocked. Card payments are USD only; nothing is charged until the trial ends, and the processor isn\u2019t connected yet, so nothing will actually be charged today either.</span></div>';
+    return '<div class="banner warn">' + I('star', 16) + '<span>Your 14-day trial ended. Billing isn\u2019t connected yet, so you keep full access for now \u2014 this will change once card payments go live.</span></div>';
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
   }
 
   /* ---------------------------------------------------------------- Home */
@@ -151,7 +186,11 @@
       '<div class="pd-card stat"><div class="stat__l">Most used snippet</div><div class="stat__v" style="font-size:20px">' + (w.snippet ? esc(w.snippet.name) : '\u2014') + '</div><div class="stat__s">' + (w.snippet ? w.snippet.count + ' uses' : 'No data') + '</div></div>' +
       '<div class="pd-card stat"><div class="stat__l">Most used website</div><div class="stat__v" style="font-size:20px">' + (w.site ? esc(w.site.key) : '\u2014') + '</div><div class="stat__s">' + (w.site ? w.site.count + ' actions' : 'No data') + '</div></div></div></div>' +
       '<div class="block"><h2>Time saved this week: ' + U.fmtDuration(w.savedSec) + '</h2></div>' +
+<<<<<<< HEAD
       '<div class="block"><h2>Team-wide (connected extensions that opted in)</h2><div class="pd-card pad" id="teamAnalytics"><p class="pd-muted pd-sm">Loading\u2026</p></div></div>';
+=======
+      '<div class="block"><h2>Team-wide (all linked devices)</h2><div class="pd-card pad" id="teamAnalytics"><p class="pd-muted pd-sm">Loading\u2026</p></div></div>';
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
   }
   async function loadTeamAnalytics() {
     const box = document.getElementById('teamAnalytics'); if (!box) return;
@@ -159,6 +198,7 @@
       const agg = await PBApi.teamAnalytics();
       const has = agg.days.some((d) => d.savedSec > 0);
       const labels = agg.days.filter((_, i) => i % 4 === 3 || i === agg.days.length - 1).map((d) => new Date(d.day + 'T12:00:00').toLocaleDateString([], { month: 'short', day: 'numeric' }));
+<<<<<<< HEAD
       box.innerHTML = '<p class="pd-sm pd-muted" style="margin-bottom:10px">Counts only \u2014 never the content of what was typed or captured. Only extensions where the person turned on \u201cShare usage counts\u201d are included.</p>' +
         (has ? '<div class="grid3" style="margin-bottom:14px"><div class="pd-card stat"><div class="stat__l">Time saved, last 30 days</div><div class="stat__v">' + U.fmtDuration(agg.savedSecLast30Days) + '</div></div></div>' +
           '<h3 style="font-size:13px;margin-bottom:8px">By team member</h3>' + agg.byMember.map((d) => '<div class="line"><div class="grow t">' + esc(d.name) + '<span class="pd-muted pd-sm"> \u00b7 ' + d.activeInstallations + ' active install' + (d.activeInstallations === 1 ? '' : 's') + '</span></div><div class="s">' + U.fmtDuration(d.savedSec) + '</div></div>').join('')
@@ -239,6 +279,35 @@
       '<div class="line"><div class="grow"><div class="t">Passkeys</div><div class="s">Sign in with your fingerprint, face or device PIN, and recover access if you forget your password.</div></div><button class="pd-btn pd-btn--sm" data-act="add-passkey">Add passkey</button></div><div id="pkList">' + pkHtml() + '</div>' +
       '<div class="line"><div class="grow"><div class="t">Where you’re signed in</div><div class="s">One device at a time. Signing in somewhere else signs this one out.</div></div></div>' +
       '<div class="line"><div class="grow"><div class="t">Extension</div><div class="s">Connect the PasteBoard extension to this account.</div></div><button class="pd-btn pd-btn--sm" data-act="link-ext">Connect extension</button></div></div></div>';
+=======
+      box.innerHTML = '<p class="pd-sm pd-muted" style="margin-bottom:10px">Across every device linked to this account \u2014 pushed every few minutes by devices that are signed in. Only counts, never the content of what was typed or captured.</p>' +
+        (has ? '<div class="grid3" style="margin-bottom:14px"><div class="pd-card stat"><div class="stat__l">Time saved, last 30 days</div><div class="stat__v">' + U.fmtDuration(agg.savedSecLast30Days) + '</div></div></div>' +
+          '<h3 style="font-size:13px;margin-bottom:8px">By device</h3>' + agg.byDevice.map((d) => '<div class="line"><div class="grow t">' + esc(d.name) + '</div><div class="s">' + U.fmtDuration(d.savedSec) + '</div></div>').join('')
+          : empty('No synced usage yet', 'Devices start sending analytics automatically a few minutes after being linked and used.'));
+    } catch (e) { box.innerHTML = '<p class="pd-sm pd-muted">' + esc(e.message) + '</p>'; }
+  }
+
+  /* ---------------------------------------------------------------- Team & Devices (real backend) */
+  function team() {
+    if (!ACC) return head('Team & Devices') + backendBanner();
+    const pending = ACC.devices.filter((d) => d.status === 'pending');
+    const roster = ACC.devices.filter((d) => d.status !== 'pending');
+    const mng = canManage();
+    const included = ACC.includedDevices, activeCount = ACC.devices.filter((d) => d.status === 'active').length;
+    const row = (d) => {
+      const owner = d.role === 'owner', isMe = d.id === ACC.you.deviceId;
+      return '<tr><td><b>' + esc(d.name) + '</b> ' + (isMe ? badge('You', 'dark') : '') + (d.extra ? badge('+$2.50/mo seat') : '') + '<div class="pd-muted pd-sm">' + esc(d.email) + '</div></td><td>' + esc(owner ? 'Owner' : d.role === 'admin' ? 'Admin' : 'Member') + '</td>' +
+        '<td>' + badge(d.status === 'active' ? 'Active' : d.status === 'revoked' ? 'Revoked' : d.status, d.status === 'active' ? 'ok' : 'danger') + '</td>' +
+        '<td>' + (owner ? badge('Always on', 'dark') : mng ? '<label class="pd-switch"><input type="checkbox" data-act="toggle-analytics" data-id="' + d.id + '"' + (d.analyticsAccess ? ' checked' : '') + '><span></span></label>' : (d.analyticsAccess ? 'On' : 'Off')) + '</td>' +
+        '<td style="text-align:right;white-space:nowrap">' + (mng && !owner ? (d.status === 'revoked' ? '<button class="pd-btn pd-btn--sm" data-act="restore-member" data-id="' + d.id + '">Restore</button> ' : '<button class="pd-btn pd-btn--sm" data-act="revoke-member" data-id="' + d.id + '">Revoke</button> ') + '<button class="pd-btn pd-btn--sm pd-btn--danger" data-act="remove-member" data-id="' + d.id + '">Remove</button>' : '') + '</td></tr>';
+    };
+    return head('Team & Devices', 'Every additional device/user signs in with their own email under your account. New requests wait here until you approve them.') + backendBanner() +
+      (mng ? '' : lockNote()) +
+      '<div class="banner"><span>' + activeCount + ' of ' + (isFinite(included) ? included : 'unlimited') + ' included seats used' + (isFinite(included) && activeCount > included ? ' \u2014 extra seats are $2.50/user/month' : '') + '. Share your account email (<b>' + esc(ACC.email) + '</b>) with teammates and point them to <b>Request access</b> on the login page.' + '</span></div>' +
+      (pending.length ? '<div class="block" style="margin-top:0"><h2>Pending requests (' + pending.length + ')</h2><div class="pd-card">' + pending.map((d) => '<div class="line"><div class="grow"><div class="t">' + esc(d.name) + '</div><div class="s">' + esc(d.email) + ' asked for access' + (d.extra ? ' \u00b7 beyond your included seats ($2.50/mo)' : '') + '</div></div>' + (mng ? '<button class="pd-btn pd-btn--primary pd-btn--sm" data-act="approve-member" data-id="' + d.id + '">Approve</button><button class="pd-btn pd-btn--sm" data-act="reject-member" data-id="' + d.id + '">Reject</button>' : '') + '</div>').join('') + '</div></div>' : '') +
+      '<div class="block"><h2>Members</h2><div class="pd-card pd-table-wrap"><table class="pd-table"><thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Analytics access</th><th></th></tr></thead><tbody>' + roster.map(row).join('') + '</tbody></table></div></div>' +
+      '<div class="block"><h2>About analytics access</h2><div class="pd-card pad pd-sm pd-muted">Only the account owner sees the Analytics page by default. Turn on \u201cAnalytics access\u201d for a member above to let them see it too.</div></div>';
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
   }
 
   /* ---------------------------------------------------------------- Company */
@@ -275,10 +344,22 @@
 
   /* ---------------------------------------------------------------- Settings */
   function settings() {
+<<<<<<< HEAD
         return head('Settings & security') +
       '<div class="pd-card"><div class="line"><div class="grow"><div class="t">Account</div><div class="s">' + esc(ACC ? ACC.email : session.accountEmail) + (ACC ? ' \u00b7 signed in as ' + esc(ACC.you.name) + ' (' + (ACC.you.role === 'owner' ? 'owner' : 'member') + ')' : '') + '</div></div><button class="pd-btn pd-btn--sm" data-act="signout">Log out</button></div>' +
       '</div>' + security() +
       '<div class="block"><h2>Data location</h2><div class="pd-card"><div class="line"><div class="grow"><div class="s">' + (bridged ? 'Your extension\u2019s local storage, through the PasteBoard bridge.' : 'This browser\u2019s local storage.') + ' Desks, snippets and files never leave this device \u2014 use Export / Import to move them.</div></div></div></div></div>' +
+=======
+    const s = db.get('settings'), plan = PD.plan.id();
+    const usage = (k) => PD.plan.count(k) + (isFinite(PD.plan.info()[k]) ? ' of ' + PD.plan.info()[k] : '');
+    return head('Settings') +
+      '<div class="pd-card"><div class="line"><div class="grow"><div class="t">Account</div><div class="s">' + esc(ACC ? ACC.email : session.accountEmail) + (ACC ? ' \u00b7 signed in as ' + esc(ACC.you.name) + ' (' + (ACC.you.role === 'owner' ? 'owner' : 'member') + ')' : '') + '</div></div><button class="pd-btn pd-btn--sm" data-act="signout">Log out</button></div>' +
+      (ACC ? '<div class="line"><div class="grow"><div class="t">Billing plan</div><div class="s">' + esc(PD.PLANS[ACC.plan].label) + (ACC.trial ? ' \u00b7 14-day trial' : '') + ' \u00b7 card payments in USD only \u00b7 processor not connected yet</div></div></div>' : '') +
+      '</div>' +
+      '<div class="block"><h2>This browser\u2019s local plan limits (for testing)</h2><div class="pd-card"><div class="line"><div class="grow"><div class="s">This does <b>not</b> change your real billing plan above \u2014 it only changes what this local copy of PasteBoard lets you try, so every limit can be tested while building.</div></div>' +
+      (PD.flags.get('devPlanSwitcher') ? '<select class="pd-select" data-f="plan" style="width:170px">' + Object.keys(PD.PLANS).map((k) => '<option value="' + k + '"' + (k === plan ? ' selected' : '') + '>' + PD.PLANS[k].label + '</option>').join('') + '</select>' : '') + '</div>' +
+      '<div class="line"><div class="grow"><div class="t">Data location</div><div class="s">' + (bridged ? 'Your extension\u2019s local storage, through the PasteBoard bridge.' : 'This browser\u2019s local storage.') + ' Cloud sync is ' + (PD.flags.get('cloudSync') ? 'on' : 'off') + '.</div></div></div></div>' +
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
       '<div class="block"><h2>Feature flags</h2><div class="pd-card">' + Object.keys(PD.FLAGS).map((k) => '<div class="line"><div class="grow"><code style="font-family:var(--pd-mono);font-size:12px">' + k + '</code></div><label class="pd-switch"><input type="checkbox" data-f="flag" data-k="' + k + '"' + (PD.flags.get(k) ? ' checked' : '') + '><span></span></label></div>').join('') + '</div></div>' +
       '<div class="block"><h2>Your data</h2><div class="pd-card"><div class="line"><div class="grow"><div class="t">Export</div><div class="s">Download a JSON backup of desks, snippets, sessions, tasks and settings \u2014 the way Premium moves local data between devices.</div></div><button class="pd-btn pd-btn--sm" data-act="export">Export</button></div>' +
       '<div class="line"><div class="grow"><div class="t">Import</div><div class="s">Restore a backup. Replaces matching data.</div></div><button class="pd-btn pd-btn--sm" data-act="import">Import</button><input type="file" id="impIn" accept="application/json" hidden></div>' +
@@ -312,11 +393,19 @@
       else if (f === 'desk-urls') { PD.desks.update(S.deskId, { urlPatterns: t.value.split(',').map((x) => x.trim()).filter(Boolean) }); toast('Saved'); }
       else if (f === 'desk-shared') { if (!canManage()) throw new Error('Only the Owner or an Admin can share desks.'); PD.desks.update(S.deskId, { shared: t.checked }); toast('Saved'); }
       else if (f === 'co') { if (!canManage()) throw new Error('Only the Owner or an Admin can edit company details.'); db.patch('company', { [t.dataset.k]: t.value.trim() }); toast('Saved'); }
+<<<<<<< HEAD
       else if (f === 'flag') { const flags = Object.assign({}, db.get('settings').flags); flags[t.dataset.k] = t.checked; db.patch('settings', { flags }); toast('Saved'); }
       else if (t.dataset.share) { if (!canManage()) throw new Error('Only the Owner or an Admin can share resources.'); db.upsert(t.dataset.share, { id: t.dataset.id, shared: t.checked }); render(); }
     });
     if (t.dataset.f === 'role') { try { await PBApi.teamUpdate({ action: 'setRole', memberId: t.dataset.id, value: t.value }); await loadAccount(); render(); toast('Saved'); } catch (err) { fail(err); render(); } }
     if (t.dataset.act === 'toggle-analytics') { try { await PBApi.teamUpdate({ action: 'setAnalyticsAccess', memberId: t.dataset.id, value: t.checked }); await loadAccount(); render(); toast('Saved'); } catch (err) { fail(err); render(); } }
+=======
+      else if (f === 'plan') { PD.plan.set(t.value); render(); toast('Local plan limits changed to ' + PD.PLANS[t.value].label); }
+      else if (f === 'flag') { const flags = Object.assign({}, db.get('settings').flags); flags[t.dataset.k] = t.checked; db.patch('settings', { flags }); toast('Saved'); }
+      else if (t.dataset.share) { if (!canManage()) throw new Error('Only the Owner or an Admin can share resources.'); db.upsert(t.dataset.share, { id: t.dataset.id, shared: t.checked }); render(); }
+    });
+    if (t.dataset.act === 'toggle-analytics') { try { await PBApi.teamUpdate({ action: 'setAnalyticsAccess', deviceId: t.dataset.id, value: t.checked }); await loadAccount(); render(); toast('Saved'); } catch (err) { fail(err); render(); } }
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
     if (t.id === 'logoIn' && t.files[0]) { try { if (!canManage()) throw new Error('Only the Owner or an Admin can change the logo.'); await PD.blobs.put('company_logo', await U.readAsDataUrl(t.files[0])); PD.company.save({ logoId: 'company_logo' }); render(); } catch (err) { fail(err); } }
     if (t.id === 'imgIn') { try { if (!canManage()) throw new Error('Only the Owner or an Admin can share images.'); for (const file of t.files) { const rec = await PD.files.add(file, { kind: 'static' }); db.upsert('files', { id: rec.id, shared: true }); } render(); toast('Image shared'); } catch (err) { fail(err); } }
     if (t.id === 'impIn' && t.files[0]) { try { await db.importAll(JSON.parse(await t.files[0].text())); render(); toast('Backup imported'); } catch (err) { fail(err); } }
@@ -343,6 +432,7 @@
       case 'del-hist': PD.history.remove(id); render(); break;
       case 'clear-hist': if (await PD.ui.confirm('Clear clipboard history? Pinned items are kept.', { danger: true, confirmLabel: 'Clear history' })) { PD.history.clear(true); render(); } break;
       case 'add-standard': { const list = (db.get('settings').standardFields || PD.STANDARD_DEFAULTS).concat([{ key: 'field' + Date.now(), label: 'New value', value: '' }]); db.patch('settings', { standardFields: list }); render(); break; }
+<<<<<<< HEAD
       case 'revoke-member': if (await PD.ui.confirm('Revoke access? They are signed out and cannot log in until restored.', { confirmLabel: 'Revoke access' })) { await PBApi.teamUpdate({ action: 'revoke', memberId: id }); await loadAccount(); render(); } break;
       case 'restore-member': await PBApi.teamUpdate({ action: 'restore', memberId: id }); await loadAccount(); render(); break;
       case 'remove-member': if (await PD.ui.confirm('Remove this person from the team? Their seat is freed. This can\u2019t be undone.', { danger: true, confirmLabel: 'Remove' })) { await PBApi.teamUpdate({ action: 'remove', memberId: id }); await loadAccount(); render(); } break;
@@ -354,6 +444,13 @@
       case 'add-passkey': { const name = await PD.ui.prompt('Add a passkey', 'Name', '', { placeholder: 'This laptop', confirmLabel: 'Continue' }); if (name !== null && name !== undefined) { await PBApi.passkeyRegister(name || 'Passkey'); await loadPasskeys(); toast('Passkey added'); } break; }
       case 'rm-passkey': if (await PD.ui.confirm('Remove this passkey?', { danger: true, confirmLabel: 'Remove' })) { await PBApi.passkey({ action: 'remove', id }); await loadPasskeys(); } break;
       case 'link-ext': { const r = await PBApi.linkExtension(); toast(r.ok ? 'Extension connected' : r.reason === 'no-extension' ? 'Extension not found \u2014 is it installed and enabled?' : 'Could not connect the extension', r.ok ? undefined : 'error'); break; }
+=======
+      case 'approve-member': await PBApi.deviceApprove(id); await loadAccount(); render(); toast('Approved'); break;
+      case 'reject-member': if (await PD.ui.confirm('Reject this request?', { danger: true, confirmLabel: 'Reject' })) { await PBApi.deviceReject(id); await loadAccount(); render(); } break;
+      case 'revoke-member': if (await PD.ui.confirm('Revoke access? They will no longer be able to log in.', { confirmLabel: 'Revoke access' })) { await PBApi.teamUpdate({ action: 'revoke', deviceId: id }); await loadAccount(); render(); } break;
+      case 'restore-member': await PBApi.teamUpdate({ action: 'restore', deviceId: id }); await loadAccount(); render(); break;
+      case 'remove-member': if (await PD.ui.confirm('Remove this person from the team? This can\u2019t be undone.', { danger: true, confirmLabel: 'Remove' })) { await PBApi.teamUpdate({ action: 'remove', deviceId: id }); await loadAccount(); render(); } break;
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
       case 'pick-logo': document.getElementById('logoIn').click(); break;
       case 'rm-logo': PD.blobs.del('company_logo'); PD.company.save({ logoId: null }); render(); break;
       case 'pick-img': document.getElementById('imgIn').click(); break;
@@ -367,6 +464,7 @@
     }
   }
 
+<<<<<<< HEAD
   content.addEventListener('submit', async (e) => {
     e.preventDefault(); const f = e.target, v = (n) => f.elements[n] && f.elements[n].value;
     try {
@@ -376,11 +474,16 @@
     } catch (err) { fail(err); }
   });
 
+=======
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
   db.on((ns, source) => { if (source === 'remote' && !content.contains(document.activeElement)) render(); });
   window.addEventListener('hashchange', () => { window.scrollTo(0, 0); render(); });
   setInterval(() => { PD.sessions.sweep(); }, 60000);
   render();
+<<<<<<< HEAD
   if (route() === 'settings') loadPasskeys();
   window.addEventListener('hashchange', () => { if (route() === 'settings') loadPasskeys(); });
   handleCheckoutReturn();
+=======
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
 })();

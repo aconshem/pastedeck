@@ -1,8 +1,11 @@
 /            /landing/index.html   200
 /login       /login/index.html     200
 /signup      /signup/index.html    200
+<<<<<<< HEAD
 /forgot-password /forgot-password/index.html 200
 /reset-password  /reset-password/index.html  200
+=======
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
 /dashboard   /dashboard/index.html 200
 /admin       /admin/index.html     200
 /pricing     /pricing/index.html   200

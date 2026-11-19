@@ -54,7 +54,11 @@
   function upsell(msg) {
     PD.ui.modal({
       title: 'Available on Premium',
+<<<<<<< HEAD
       html: '<p>' + esc(msg) + '</p><p class="pd-muted pd-sm" style="margin-top:8px">Free includes 1 snippet, 1 desk and 1 session at a time. Premium ($25, one-time) unlocks unlimited snippets, desks and sessions, the file shelf, capture &amp; paste blueprints and 5 seats.</p>',
+=======
+      html: '<p>' + esc(msg) + '</p><p class="pd-muted pd-sm" style="margin-top:8px">Premium unlocks unlimited snippets, desks and sessions, the file shelf, blueprints and autofill.</p>',
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
       actions: [{ label: 'Not now' }, { label: 'See plans', primary: true, onClick() { site('pricing'); } }],
     });
   }
@@ -109,6 +113,7 @@
     if (a === 'resume-auto') { PD.desks.resumeAuto(); PD.desks.autoSwitch(S.tabUrl); renderHeader(); refreshTab(); }
     else if (a === 'open-panel') { chrome.sidePanel.open({ windowId: S.windowId }).then(() => window.close()).catch(() => toast('Could not open the side panel here.', 'error')); }
     else if (a === 'menu') {
+<<<<<<< HEAD
       const acct = (db.get('account') || {}).token ? db.get('account') : null;
       PD.ui.menu(b, [
         { label: 'Open dashboard', icon: 'home', onClick: () => site('dashboard') },
@@ -118,6 +123,17 @@
         { label: 'Unlink account', icon: 'logout', async onClick() { if (await PD.ui.confirm('Unlink this computer? It returns to the Free plan; your local data stays.', { confirmLabel: 'Unlink' })) { await chrome.runtime.sendMessage({ type: 'PD_UNLINK' }); renderHeader(); } } },
       ] : [
         { label: 'Connect account', icon: 'user', onClick: () => site('login') },
+=======
+      const acct = db.get('account');
+      PD.ui.menu(b, [
+        { label: 'Open dashboard', icon: 'home', onClick: () => site('dashboard') },
+        { label: 'Manage devices', icon: 'monitor', onClick: () => site('devices') },
+      ].concat(acct ? [
+        { label: 'Linked as ' + acct.name, icon: 'user', onClick: () => {} },
+        { label: 'Unlink this device', icon: 'logout', async onClick() { if (await PD.ui.confirm('Unlink this device?', { confirmLabel: 'Unlink' })) { await chrome.runtime.sendMessage({ type: 'PD_UNLINK' }); renderHeader(); } } },
+      ] : [
+        { label: 'Log in', icon: 'user', onClick: () => site('login') },
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
         { label: 'Create account', icon: 'plus', onClick: () => site('signup') },
       ]).concat([
         '-',
@@ -319,7 +335,11 @@
   /* ------------------------------------------------------------------ FILES */
   function tabFiles() {
     if (!PD.plan.can('files')) {
+<<<<<<< HEAD
       main.innerHTML = '<div class="lock">' + I('lock', 28) + '<p style="margin:10px 0 4px;font-weight:600">The file shelf is part of Premium</p><p class="pd-muted pd-sm">Keep your logo, location and requirements PDF one click away. The Free plan has no file shelf.</p><button class="pd-btn pd-btn--primary" style="margin-top:14px" data-act="see-plans">See plans</button></div>';
+=======
+      main.innerHTML = '<div class="lock">' + I('lock', 28) + '<p style="margin:10px 0 4px;font-weight:600">The file shelf is part of Pro</p><p class="pd-muted pd-sm">Keep your logo, location and requirements PDF one click away. Free plans stay text-only.</p><button class="pd-btn pd-btn--primary" style="margin-top:14px" data-act="see-plans">See plans</button></div>';
+>>>>>>> bb4656f6918703bd5f507e283028530221861759
       return;
     }
     const desk = PD.desks.active(), cur = PD.sessions.active();
