@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Reset your password · PasteBoard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="../assets/shared/icons/icon-32.png">
+  <link rel="stylesheet" href="../assets/shared/ui/pd.css">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body class="pd">
+  <main class="auth">
+    <div class="auth__card">
+      <a href="../landing/index.html" class="brand"><img src="../assets/shared/icons/icon-48.png" alt="" width="26" height="26" style="border-radius:7px">PasteBoard</a>
+      <section id="view-form">
+        <h1>Forgot your password?</h1>
+        <p class="auth__sub">Enter your account email and we&rsquo;ll send you a link to choose a new one. The link works once and expires in 30 minutes.</p>
+        <form id="form" novalidate>
+          <div class="pd-field"><label class="pd-label" for="email">Email</label><input class="pd-input" id="email" type="email" autocomplete="username webauthn" required></div>
+          <button class="pd-btn pd-btn--primary pd-btn--lg pd-btn--block" id="submit" type="submit">Email me a reset link</button>
+          <p class="pd-help" id="err" style="color:var(--pd-danger)" role="alert"></p>
+        </form>
+        <div id="passkey-box" hidden>
+          <p class="pd-help" style="text-align:center;margin:14px 0 8px">&mdash; or &mdash;</p>
+          <button class="pd-btn pd-btn--lg pd-btn--block" id="passkey" type="button">Sign in with a passkey</button>
+          <p class="pd-help">Have a passkey registered? Sign in with it, then set a new password in <b>Settings &rarr; Security</b> &mdash; no email needed.</p>
+        </div>
+        <p class="auth__foot"><a href="../login/index.html">Back to log in</a></p>
+      </section>
+      <section id="view-sent" hidden>
+        <h1>Check your email</h1>
+        <p class="auth__sub" id="sent-msg"></p>
+        <a class="pd-btn pd-btn--block" href="../login/index.html">Back to log in</a>
+      </section>
+    </div>
+  </main>
+  <footer class="footer"><div class="container"><span>&copy; PasteBoard</span><nav aria-label="Legal"><a href="../pricing/index.html">Pricing</a><a href="../landing/index.html#faq">FAQ</a><a href="../terms/index.html">Terms</a><a href="../privacy/index.html">Privacy</a><a href="../refunds/index.html">Refunds</a></nav></div></footer>
+  <script src="../assets/api.js"></script>
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      if (PBApi.passkeysSupported()) $('passkey-box').hidden = false;
+      $('form').onsubmit = async (e) => {
+        e.preventDefault(); $('err').textContent = ''; $('submit').disabled = true;
+        try { const r = await PBApi.forgot($('email').value.trim()); $('sent-msg').textContent = r.message; $('view-form').hidden = true; $('view-sent').hidden = false; }
+        catch (err) { $('err').textContent = err.message; } finally { $('submit').disabled = false; }
+      };
+      $('passkey').onclick = async () => {
+        $('err').textContent = '';
+        try { const data = await PBApi.passkeyLogin($('email').value.trim()); PBApi.setSession(data); location.href = '../dashboard/index.html#settings'; }
+        catch (err) { $('err').textContent = err.name === 'NotAllowedError' ? 'Passkey sign-in was cancelled.' : err.message; }
+      };
+    })();
+  </script>
+</body>
+</html>

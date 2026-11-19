@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Verify your email · PasteBoard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="../assets/shared/icons/icon-32.png">
+  <link rel="stylesheet" href="../assets/shared/ui/pd.css">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body class="pd">
+  <main class="auth">
+    <div class="auth__card">
+      <a href="../landing/index.html" class="brand"><img src="../assets/shared/icons/icon-48.png" alt="" width="26" height="26" style="border-radius:7px">PasteBoard</a>
+      <h1 id="h">Verifying&hellip;</h1>
+      <p class="auth__sub" id="msg"></p>
+      <a class="pd-btn pd-btn--primary pd-btn--block" href="../dashboard/index.html">Open dashboard</a>
+    </div>
+  </main>
+  <footer class="footer"><div class="container"><span>&copy; PasteBoard</span><nav aria-label="Legal"><a href="../pricing/index.html">Pricing</a><a href="../landing/index.html#faq">FAQ</a><a href="../terms/index.html">Terms</a><a href="../privacy/index.html">Privacy</a><a href="../refunds/index.html">Refunds</a></nav></div></footer>
+  <script src="../assets/api.js"></script>
+  <script>
+    (async function () {
+      const token = new URLSearchParams(location.search).get('token');
+      try { await PBApi.verifyEmail(token); document.getElementById('h').textContent = 'Email verified'; document.getElementById('msg').textContent = 'Thanks — you can now start your free trial and invite teammates.'; const s = PBApi.session(); if (s) { s.emailVerified = true; localStorage.setItem('pb_session_meta', JSON.stringify(s)); } }
+      catch (e) { document.getElementById('h').textContent = 'Link problem'; document.getElementById('msg').textContent = e.message; }
+    })();
+  </script>
+</body>
+</html>

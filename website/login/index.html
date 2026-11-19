@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Log in · PasteBoard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="../assets/shared/icons/icon-32.png">
+  <link rel="stylesheet" href="../assets/shared/ui/pd.css">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body class="pd">
+  <main class="auth">
+    <div class="auth__card">
+      <a href="../landing/index.html" class="brand"><img src="../assets/shared/icons/icon-48.png" alt="" width="26" height="26" style="border-radius:7px">PasteBoard</a>
+
+      <section id="view-login">
+        <h1>Log in to PasteBoard</h1>
+        <p class="auth__sub">Manage your account, billing and team. Your clipboard, snippets and files stay on your computer.</p>
+        <div class="banner-note" id="notice" hidden style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px"></div>
+        <form id="login-form" novalidate>
+          <div class="pd-field"><label class="pd-label" for="email">Email</label><input class="pd-input" id="email" type="email" autocomplete="username webauthn" placeholder="you@company.com" required></div>
+          <div class="pd-field"><label class="pd-label" for="password">Password</label>
+            <div class="pd-pw-wrap"><input class="pd-input" id="password" type="password" autocomplete="current-password" required><button class="pd-pw-toggle" type="button" data-pw-toggle="password">Show</button></div>
+            <div class="pd-help"><a href="../forgot-password/index.html">Forgot your password?</a></div>
+          </div>
+          <button class="pd-btn pd-btn--primary pd-btn--lg pd-btn--block" id="submit" type="submit">Log in</button>
+          <button class="pd-btn pd-btn--lg pd-btn--block" id="passkey" type="button" style="margin-top:8px" hidden>Use a passkey instead</button>
+          <p class="pd-help" id="err" style="color:var(--pd-danger)" role="alert"></p>
+        </form>
+        <p class="auth__foot">No account yet? <a href="../signup/index.html">Create one</a><br><span class="pd-muted">Joining a team? Use the invitation link in your email.</span></p>
+        <p class="pd-help" style="margin-top:10px">One person, one signed-in device: logging in here signs you out anywhere else.</p>
+      </section>
+
+      <section id="view-done" hidden>
+        <h1>You are logged in</h1>
+        <p class="auth__sub" id="done-msg"></p>
+        <a class="pd-btn pd-btn--primary pd-btn--lg pd-btn--block" id="go" href="../dashboard/index.html">Open dashboard</a>
+        <p class="auth__foot" id="ext-note" hidden></p>
+        <button class="pd-btn pd-btn--ghost pd-btn--block" id="switch" style="margin-top:8px">Log in as someone else</button>
+      </section>
+    </div>
+  </main>
+  <footer class="footer"><div class="container"><span>&copy; PasteBoard</span><nav aria-label="Legal"><a href="../pricing/index.html">Pricing</a><a href="../landing/index.html#faq">FAQ</a><a href="../terms/index.html">Terms</a><a href="../privacy/index.html">Privacy</a><a href="../refunds/index.html">Refunds</a></nav></div></footer>
+  <script src="../assets/api.js"></script>
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const params = new URLSearchParams(location.search);
+      const show = (id) => ['view-login', 'view-done'].forEach((v) => ($(v).hidden = v !== id));
+      const reasons = { elsewhere: 'You were signed out because this account signed in on another device.', revoked: 'Your access was revoked by the account owner.', expired: 'Your session expired. Please log in again.', reset: 'Password updated. Log in with your new password.' };
+      if (reasons[params.get('reason')]) { $('notice').textContent = reasons[params.get('reason')]; $('notice').hidden = false; }
+      if (PBApi.passkeysSupported()) $('passkey').hidden = false;
+
+      async function done(s) {
+        $('done-msg').textContent = 'Signed in as ' + (s.name || s.accountEmail) + (s.role === 'owner' ? ' (account owner)' : '');
+        show('view-done');
+        if (params.get('source') === 'extension') {
+          $('ext-note').hidden = false; $('ext-note').textContent = 'Connecting your extension…';
+          try {
+            const r = await PBApi.linkExtension();
+            $('ext-note').textContent = r.ok ? 'Extension connected. You can close this tab and go back to Chrome.' : 'The PasteBoard extension was not found in this browser. Install or enable it, then click Connect account in its settings again.';
+          } catch (e) { $('ext-note').textContent = 'Could not connect the extension: ' + e.message; }
+        }
+      }
+      const existing = PBApi.session();
+      if (existing && PBApi.token() && params.get('switch') !== '1') done(existing);
+      $('login-form').onsubmit = async (e) => {
+        e.preventDefault(); $('err').textContent = ''; $('submit').disabled = true;
+        try { const data = await PBApi.login({ email: $('email').value.trim(), password: $('password').value }); PBApi.setSession(data); done(data); }
+        catch (err) { $('err').textContent = err.message; } finally { $('submit').disabled = false; }
+      };
+      $('passkey').onclick = async () => {
+        $('err').textContent = '';
+        try { const data = await PBApi.passkeyLogin($('email').value.trim()); PBApi.setSession(data); done(data); }
+        catch (err) { $('err').textContent = err.name === 'NotAllowedError' ? 'Passkey sign-in was cancelled.' : err.message; }
+      };
+      $('switch').onclick = async () => { await PBApi.logout(); PBApi.signOut(); location.href = 'index.html?switch=1'; };
+      document.querySelectorAll("[data-pw-toggle]").forEach(function(b){b.onclick=function(){var i=document.getElementById(b.dataset.pwToggle),s=i.type==="password";i.type=s?"text":"password";b.textContent=s?"Hide":"Show";};});
+    })();
+  </script>
+</body>
+</html>

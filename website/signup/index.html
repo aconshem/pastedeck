@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Create your account · PasteBoard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="../assets/shared/icons/icon-32.png">
+  <link rel="stylesheet" href="../assets/shared/ui/pd.css">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body class="pd">
+  <main class="auth">
+    <div class="auth__card" style="max-width:440px">
+      <a href="../landing/index.html" class="brand"><img src="../assets/shared/icons/icon-48.png" alt="" width="26" height="26" style="border-radius:7px">PasteBoard</a>
+
+      
+      <section id="view-form">
+        <h1 id="h">Create your PasteBoard account</h1>
+        <p class="auth__sub" id="sub">Start on the Free plan &mdash; no card needed. <a href="../pricing/index.html">Compare plans</a></p>
+        <form id="form" novalidate>
+          <div class="pd-field"><label class="pd-label" for="name">Full name</label><input class="pd-input" id="name" autocomplete="name" required></div>
+          <div class="pd-field"><label class="pd-label" for="email">Email</label><input class="pd-input" id="email" type="email" autocomplete="email" required></div>
+          <div class="pd-field"><label class="pd-label" for="pw">Password</label><div class="pd-pw-wrap"><input class="pd-input" id="pw" type="password" minlength="8" autocomplete="new-password" required><button class="pd-pw-toggle" type="button" data-pw-toggle="pw">Show</button></div><div class="pd-help">At least 8 characters.</div></div>
+          <label class="pd-check" style="margin-bottom:10px;align-items:flex-start"><input type="checkbox" id="terms" required style="margin-top:3px">&nbsp;<span>I agree to the <a href="../terms/index.html" target="_blank" rel="noopener">Terms of Service</a> and <a href="../privacy/index.html" target="_blank" rel="noopener">Privacy Policy</a>. <span class="pd-muted">(required)</span></span></label>
+          <label class="pd-check" style="margin-bottom:14px;align-items:flex-start"><input type="checkbox" id="marketing" style="margin-top:3px">&nbsp;<span>Send me occasional product news and offers by email. <span class="pd-muted">(optional &mdash; unsubscribe any time)</span></span></label>
+          <button class="pd-btn pd-btn--primary pd-btn--lg pd-btn--block" type="submit" id="submit">Create account</button>
+          <p class="pd-help" id="err" style="color:var(--pd-danger)" role="alert"></p>
+        </form>
+        <p class="auth__foot">Already have an account? <a href="../login/index.html">Log in</a></p>
+      </section>
+      <section id="view-bad" hidden>
+        <h1>Invitation not valid</h1>
+        <p class="auth__sub">This invitation link is invalid, already used, or expired (invitations last 7 days). Ask your team owner to send a new one.</p>
+        <a class="pd-btn pd-btn--block" href="../login/index.html">Back to log in</a>
+      </section>
+    </div>
+  </main>
+  <footer class="footer"><div class="container"><span>&copy; PasteBoard</span><nav aria-label="Legal"><a href="../pricing/index.html">Pricing</a><a href="../landing/index.html#faq">FAQ</a><a href="../terms/index.html">Terms</a><a href="../privacy/index.html">Privacy</a><a href="../refunds/index.html">Refunds</a></nav></div></footer>
+    <script src="../assets/api.js"></script>
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const params = new URLSearchParams(location.search), invite = params.get('invite');
+      // Joining by invitation: the email is fixed by the invite and is already verified by the act of opening the link.
+      if (invite) (async () => {
+        try {
+          const r = await PBApi.inviteCheck(invite);
+          if (!r.valid) throw new Error('bad');
+          $('h').textContent = 'Join ' + r.inviter + '\u2019s team'; $('sub').textContent = 'You were invited as ' + r.email + '. Your clipboard, snippets and files stay on your own computer.';
+          $('email').value = r.email; $('email').readOnly = true; $('submit').textContent = 'Accept invitation';
+        } catch (e) { $('view-form').hidden = true; $('view-bad').hidden = false; }
+      })();
+      $('form').onsubmit = async (e) => {
+        e.preventDefault(); $('err').textContent = '';
+        if (!$('terms').checked) { $('err').textContent = 'Please accept the Terms of Service and Privacy Policy to continue.'; return; }
+        $('submit').disabled = true;
+        const b = { name: $('name').value.trim(), password: $('pw').value, acceptedTerms: true, marketingOptIn: $('marketing').checked };
+        try {
+          const data = invite ? await PBApi.inviteAccept(Object.assign(b, { token: invite })) : await PBApi.signup(Object.assign(b, { email: $('email').value.trim() }));
+          PBApi.setSession(data);
+          if (params.get('source') === 'extension') { try { await PBApi.linkExtension(); } catch (x) { /* they can connect from the extension later */ } }
+          location.href = '../dashboard/index.html' + (invite ? '' : '#overview');
+        } catch (err) { $('err').textContent = err.message; } finally { $('submit').disabled = false; }
+      };
+      document.querySelectorAll('[data-pw-toggle]').forEach((btn) => { btn.onclick = () => { const i = $(btn.dataset.pwToggle), s = i.type === 'password'; i.type = s ? 'text' : 'password'; btn.textContent = s ? 'Hide' : 'Show'; }; });
+    })();
+  </script>
+</body>
+</html>

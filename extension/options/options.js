@@ -1,0 +1,91 @@
+(async function () {
+  'use strict';
+  const U = PD.util, esc = U.esc, db = PD.db;
+  await db.init();
+  document.getElementById('ver').textContent = 'Version ' + PD.VERSION + ' · data stays on this device';
+  if (location.hash === '#welcome') document.getElementById('welcome').classList.remove('pd-hidden');
+  const root = document.getElementById('root');
+
+  const sw = (name, on) => '<label class="pd-switch"><input type="checkbox" data-s="' + name + '"' + (on ? ' checked' : '') + '><span></span></label>';
+
+  function render() {
+    const s = db.get('settings');
+    const plan = PD.plan.id();
+    const acct = db.get('account'), ent = acct && acct.entitlement;
+    root.innerHTML =
+      '<div class="pd-card card"><h2>Account</h2>' +
+      (acct && acct.token
+        ? '<div class="item"><div>Connected as <b>' + esc(acct.name) + '</b> (' + (acct.role === 'owner' ? 'owner' : acct.role === 'admin' ? 'admin' : 'member') + ')<small>' + esc(acct.accountName || '') + ' \u00b7 ' + esc(acct.email || acct.accountEmail) + '</small></div><div class="ctl auto"><button class="pd-btn pd-btn--danger" data-a="unlink">Unlink</button></div></div>' +
+          '<div class="item"><div>Plan: <b>' + esc(PD.PLANS[plan].label) + '</b>' + (ent && ent.source === 'trial' ? ' (free trial until ' + new Date(ent.trialEndsAt).toLocaleDateString() + ')' : '') + '<small>' + (plan === 'premium' ? 'All features unlocked.' : 'Free: 1 snippet, 1 desk, 1 session at a time; no file shelf or blueprints.') + ' Your plan always comes from your account, never from a local setting.' + (ent && ent.checkedAt ? ' Last checked ' + new Date(ent.checkedAt).toLocaleString() + '.' : '') + '</small></div><div class="ctl auto">' + (plan === 'premium' ? '' : '<button class="pd-btn" data-a="pricing">See Premium</button>') + '</div></div>' +
+          '<div class="item"><div>Share usage counts with my account owner<small>Off by default. When on, this computer sends only totals \u2014 snippets used, forms filled, captures and estimated time saved. Never clipboard text, snippet text, web addresses, files or candidate details.</small></div>' + sw('analyticsConsent', acct.analyticsConsent === true) + '</div>'
+        : (s.unlinkNotice ? '<div class="item"><div><b>Signed out.</b><small>' + esc(s.unlinkNotice.reason) + '</small></div></div>' : '') +
+          '<div class="item"><div>Not connected<small>You are on the Free plan on this computer. Connecting your PasteBoard account unlocks the plan you have and lets your team owner manage your seat. Your content stays on this computer either way.</small></div><div class="ctl auto"><button class="pd-btn" data-a="signup">Create account</button> <button class="pd-btn pd-btn--primary" data-a="login">' + (s.unlinkNotice ? 'Reconnect account' : 'Connect account') + '</button></div></div>') +
+      '<div class="item"><div>Dashboard<small>Billing, team, invitations and analytics. Never your clipboard or snippets.</small></div><div class="ctl auto"><button class="pd-btn" data-a="dashboard">Open dashboard</button></div></div></div>' +
+
+      '<div class="pd-card card"><h2>Standard values</h2>' +
+      '<div class="item" style="display:block"><div style="margin-bottom:10px">Facts that are true no matter who you\'re replying to — salary, location, working hours. Use them in any snippet as <code>{{standard.salary}}</code> etc. ' +
+      '<small>Unlike session details, these don\'t expire and aren\'t specific to one candidate — that\'s why personalized replies should use these, not <code>{{session.*}}</code>, since the person you\'re messaging isn\'t necessarily the one held in the active session.</small></div>' +
+      (db.get('settings').standardFields || PD.STANDARD_DEFAULTS).map((f, i) => '<div class="pd-field-row" style="margin-bottom:8px"><div class="pd-field" style="margin-bottom:0"><input class="pd-input" data-std-label="' + i + '" value="' + esc(f.label) + '" placeholder="Label"></div><div class="pd-field" style="margin-bottom:0"><input class="pd-input" data-std-value="' + i + '" value="' + esc(f.value) + '" placeholder="Value"></div></div>').join('') +
+      '<button class="pd-btn pd-btn--sm" data-a="add-standard">' + '+ Add value</button></div></div>' +
+
+      '<div class="pd-card card"><h2>General</h2>' +
+      '<div class="item"><div>Switch desks automatically<small>Uses the website address. You can always pin a desk by hand.</small></div>' + sw('autoDetect', s.autoDetect !== false) + '</div>' +
+      '<div class="item"><div>Show the small PasteBoard button on sites with blueprints<small>Lets you copy details or fill a form in one click.</small></div>' + sw('floatingPill', s.floatingPill !== false) + '</div>' +
+      '<div class="item"><div>Type-to-insert shortcuts<small>Type <code>;sal</code> and a space to expand a snippet.</small></div>' + sw('textExpansion', s.textExpansion !== false) + '</div>' +
+      '<div class="item"><div>Reminder notifications<small>Uses Chrome notifications.</small></div>' + sw('notifications', s.notifications !== false) + '</div>' +
+      '<div class="item"><div>Default session length<small>Candidate sessions delete themselves after this.</small></div><div class="ctl"><select class="pd-select" data-s="defaultExpiry">' + PD.SESSION_PRESETS.map((p) => '<option value="' + p.id + '"' + ((s.defaultExpiry || '1h') === p.id ? ' selected' : '') + '>' + p.label + '</option>').join('') + '</select></div></div>' +
+      '<div class="item"><div>Keyboard shortcuts<small>Command bar: Ctrl+Shift+Space. Quick add task: Alt+Shift+T (Chrome reserves Ctrl+Shift+T).</small></div><div class="ctl auto"><button class="pd-btn" data-a="shortcuts">Change shortcuts</button></div></div></div>' +
+
+      '<div class="pd-card card"><h2>Clipboard history</h2>' +
+      '<div class="item"><div>Keep clipboard history<small>Text, links and pasted images. Local only. Password fields are always ignored.</small></div>' + sw('clipboardHistory', s.clipboardHistory !== false) + '</div>' +
+      '<div class="item"><div>Never record on these sites<small>One per line, e.g. <code>bank.example.com</code></small></div><div class="ctl"><textarea class="pd-textarea" data-s="ignoreHosts" style="min-height:64px">' + esc((s.ignoreHosts || []).join('\n')) + '</textarea></div></div>' +
+      '<div class="item"><div>Clear history now<small>Pinned items are kept.</small></div><div class="ctl auto"><button class="pd-btn pd-btn--danger" data-a="clear-history">Clear history</button></div></div></div>' +
+
+      '<div class="pd-card card"><h2>Developer</h2>' +
+      '<div class="item"><div>Feature flags<small>Local switches only. They can turn a feature off, never unlock one.</small></div></div>' +
+      '<div class="flags">' + Object.keys(PD.FLAGS).map((k) => '<div class="item"><div><code>' + k + '</code></div>' + sw('flag:' + k, PD.flags.get(k)) + '</div>').join('') + '</div></div>' +
+
+      '<div class="pd-card card"><h2>Your data</h2>' +
+      '<div class="item"><div>Export everything<small>A JSON backup of desks, snippets, sessions, tasks and settings. Files and clipboard images are not included.</small></div><div class="ctl auto"><button class="pd-btn" data-a="export">Export</button></div></div>' +
+      '<div class="item"><div>Import a backup<small>Replaces the matching data on this device.</small></div><div class="ctl auto"><button class="pd-btn" data-a="import">Import</button><input type="file" id="imp" accept="application/json" hidden></div></div>' +
+      '<div class="item"><div>Reset to the starter setup<small>Deletes all local data and re-creates the sample desks.</small></div><div class="ctl auto"><button class="pd-btn pd-btn--danger" data-a="reset">Reset</button></div></div></div>';
+  }
+  render();
+  db.on((ns, src) => { if (src === 'remote' && !root.contains(document.activeElement)) render(); });
+
+  root.addEventListener('change', (e) => {
+    const t = e.target;
+    if (t.dataset.stdLabel !== undefined || t.dataset.stdValue !== undefined) {
+      const i = +(t.dataset.stdLabel !== undefined ? t.dataset.stdLabel : t.dataset.stdValue);
+      const list = (db.get('settings').standardFields || PD.STANDARD_DEFAULTS).slice();
+      const row = Object.assign({}, list[i]);
+      if (t.dataset.stdLabel !== undefined) row.label = t.value.trim() || row.label; else row.value = t.value;
+      list[i] = row; db.patch('settings', { standardFields: list }); PD.ui.toast('Saved'); return;
+    }
+    const k = t.dataset && t.dataset.s;
+    if (!k) return;
+    if (k.indexOf('flag:') === 0) { const flags = Object.assign({}, db.get('settings').flags); flags[k.slice(5)] = t.checked; db.patch('settings', { flags }); return; }
+    let v = t.type === 'checkbox' ? t.checked : t.value;
+    if (k === 'ignoreHosts') v = t.value.split('\n').map((x) => x.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')).filter(Boolean);
+    if (k === 'analyticsConsent') { chrome.runtime.sendMessage({ type: 'PD_SET_CONSENT', value: v }); PD.ui.toast(v ? 'Sharing usage counts' : 'Stopped sharing'); return; }
+    db.patch('settings', { [k]: v });
+    PD.ui.toast('Saved');
+  });
+  document.addEventListener('change', async (e) => {
+    if (e.target.id !== 'imp' || !e.target.files[0]) return;
+    try { await db.importAll(JSON.parse(await e.target.files[0].text())); render(); PD.ui.toast('Backup imported'); } catch (err) { PD.ui.toast(err.message, 'error'); }
+    e.target.value = '';
+  });
+  document.body.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-a]'); if (!b) return;
+    const a = b.dataset.a;
+    if (['login', 'dashboard', 'signup', 'pricing'].indexOf(a) >= 0) chrome.runtime.sendMessage({ type: 'PD_OPEN', page: a });
+    else if (a === 'unlink') { if (await PD.ui.confirm('Unlink this computer? It goes back to the Free plan and stops sending usage counts until you connect again. Your local data is not touched.', { confirmLabel: 'Unlink' })) { await chrome.runtime.sendMessage({ type: 'PD_UNLINK' }); render(); } }
+    else if (a === 'shortcuts') chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
+    else if (a === 'clear-history') { if (await PD.ui.confirm('Clear clipboard history? Pinned items are kept.', { danger: true, confirmLabel: 'Clear' })) { PD.history.clear(true); PD.ui.toast('History cleared'); } }
+    else if (a === 'export') U.download('pasteboard-backup-' + U.dayKey() + '.json', JSON.stringify(db.exportAll(), null, 2));
+    else if (a === 'import') document.getElementById('imp').click();
+    else if (a === 'add-standard') { const list = (db.get('settings').standardFields || PD.STANDARD_DEFAULTS).concat([{ key: 'field' + Date.now(), label: 'New value', value: '' }]); db.patch('settings', { standardFields: list }); render(); }
+    else if (a === 'reset') { if (await PD.ui.confirm('Delete all PasteBoard data on this device?', { danger: true, confirmLabel: 'Delete everything', title: 'Reset PasteBoard' })) { await db.resetAll(); PD.devices.registerCurrent(); render(); PD.ui.toast('Reset complete'); } }
+  });
+})();

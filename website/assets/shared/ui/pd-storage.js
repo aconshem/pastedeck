@@ -1,0 +1,241 @@
+/*
+ * PasteBoard storage layer.
+ *
+ *   PD.db  — synchronous reads from an in-memory cache, async write-through to an adapter.
+ *   Adapters: chrome.storage.local (extension) | extension-bridge (website talking to the extension)
+ *             | localStorage (website demo mode) | memory (tests)
+ *
+ * Every record carries { id, createdAt, updatedAt, rev }.
+ * PasteBoard is local-first: workspace content never leaves the device (the server only ever sees account/billing data and aggregate counts).
+ */
+(function (g) {
+  'use strict';
+  const PD = (g.PD = g.PD || {});
+  if (PD.db && PD.db.NAMESPACES) return; // already loaded (e.g. content script injected twice)
+  const U = PD.util;
+
+  const NAMESPACES = ['meta', 'desks', 'snippets', 'sessions', 'blueprints', 'tasks', 'history', 'files', 'company', 'team', 'settings', 'analytics', 'devices', 'leads', 'account', 'outbox'];
+  const DEFAULTS = () => ({
+    meta: {}, desks: [], snippets: [], sessions: [], blueprints: [], tasks: [], history: [], files: [],
+    company: {}, team: {}, settings: {}, analytics: { days: {} }, devices: [], leads: [], account: null, outbox: [],
+  });
+  const K = (ns) => 'pd:' + ns;
+
+  /* ---------------- adapters ---------------- */
+  function chromeAdapter() {
+    return {
+      name: 'chrome.storage.local',
+      load: (keys) => chrome.storage.local.get(keys),
+      save: (obj) => chrome.storage.local.set(obj),
+      remove: (keys) => chrome.storage.local.remove(keys),
+      subscribe(fn) {
+        chrome.storage.onChanged.addListener((ch, area) => {
+          if (area !== 'local') return;
+          const o = {};
+          for (const k in ch) if (k.indexOf('pd:') === 0) o[k] = ch[k].newValue;
+          if (Object.keys(o).length) fn(o);
+        });
+      },
+    };
+  }
+
+  function localAdapter() {
+    const ls = g.localStorage;
+    return {
+      name: 'localStorage',
+      async load(keys) {
+        const o = {};
+        keys.forEach((k) => { const v = ls.getItem(k); if (v != null) { try { o[k] = JSON.parse(v); } catch (e) { /* ignore */ } } });
+        return o;
+      },
+      async save(obj) { for (const k in obj) ls.setItem(k, JSON.stringify(obj[k])); },
+      async remove(keys) { keys.forEach((k) => ls.removeItem(k)); },
+      subscribe(fn) {
+        g.addEventListener('storage', (e) => {
+          if (e.key && e.key.indexOf('pd:') === 0) { let v = null; try { v = JSON.parse(e.newValue); } catch (x) { /* ignore */ } fn({ [e.key]: v }); }
+        });
+      },
+    };
+  }
+
+  function memoryAdapter() {
+    const m = {};
+    return {
+      name: 'memory',
+      async load(keys) { const o = {}; keys.forEach((k) => { if (k in m) o[k] = JSON.parse(JSON.stringify(m[k])); }); return o; },
+      async save(obj) { for (const k in obj) m[k] = JSON.parse(JSON.stringify(obj[k])); },
+      async remove(keys) { keys.forEach((k) => delete m[k]); },
+      subscribe() {},
+    };
+  }
+
+  /* Website <-> extension bridge (content/bridge.js answers these messages on pastedeck.netlify.app only). */
+  function bridgeAdapter() {
+    let seq = 0; const pending = new Map(); const subs = [];
+    g.addEventListener('message', (e) => {
+      const d = e.data;
+      if (e.source !== g || !d || d.pd !== 'ext') return;
+      if (d.type === 'result' && pending.has(d.id)) { pending.get(d.id)(d); pending.delete(d.id); }
+      else if (d.type === 'changed') subs.forEach((f) => f(d.changes));
+    });
+    const call = (type, payload) => new Promise((res, rej) => {
+      const id = ++seq;
+      pending.set(id, (r) => (r.error ? rej(new Error(r.error)) : res(r.data)));
+      g.postMessage(Object.assign({ pd: 'site', type, id }, payload), g.location.origin);
+      setTimeout(() => { if (pending.delete(id)) rej(new Error('Extension bridge timed out')); }, 6000);
+    });
+    return {
+      name: 'extension-bridge',
+      load: (keys) => call('get', { keys }),
+      save: (obj) => call('set', { obj }),
+      remove: (keys) => call('remove', { keys }),
+      subscribe: (f) => subs.push(f),
+    };
+  }
+
+  function detectBridge(timeout) {
+    return new Promise((resolve) => {
+      if (!g.postMessage || !g.location || !/^https?:$/.test(g.location.protocol)) return resolve(false);
+      const done = (v) => { g.removeEventListener('message', on); clearTimeout(t); resolve(v); };
+      const on = (e) => { if (e.source === g && e.data && e.data.pd === 'ext' && e.data.type === 'pong') done(true); };
+      g.addEventListener('message', on);
+      const t = setTimeout(() => done(false), timeout || 500);
+      g.postMessage({ pd: 'site', type: 'ping', id: 0 }, g.location.origin);
+    });
+  }
+
+  async function pickAdapter(pref) {
+    if (pref && typeof pref === 'object') return pref;
+    if (pref === 'memory') return memoryAdapter();
+    if (pref === 'local') return localAdapter();
+    const inExtension = typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local && chrome.runtime && chrome.runtime.id;
+    if (inExtension) return chromeAdapter();
+    if (pref === 'web' && (await detectBridge(600))) return bridgeAdapter();
+    return localAdapter();
+  }
+
+  /* ---------------- db ---------------- */
+  const listeners = [];
+  const db = (PD.db = {
+    NAMESPACES, cache: DEFAULTS(), adapter: null, ready: null,
+
+    init(opts) {
+      opts = opts || {};
+      if (db.ready) return db.ready;
+      db.ready = (async () => {
+        db.adapter = await pickAdapter(opts.adapter);
+        const stored = await db.adapter.load(NAMESPACES.map(K));
+        NAMESPACES.forEach((ns) => { const v = stored[K(ns)]; if (v !== undefined && v !== null) db.cache[ns] = v; });
+        db.adapter.subscribe((changes) => {
+          const changed = [];
+          for (const k in changes) {
+            const ns = k.slice(3);
+            if (NAMESPACES.indexOf(ns) < 0) continue;
+            const nv = changes[k] == null ? DEFAULTS()[ns] : changes[k];
+            if (JSON.stringify(nv) !== JSON.stringify(db.cache[ns])) { db.cache[ns] = nv; changed.push(ns); }
+          }
+          changed.forEach((ns) => db._emit(ns, 'remote'));
+        });
+        if (!db.cache.meta.schemaVersion && opts.seed !== false) await PD.seed(opts.seedOptions);
+        return db;
+      })();
+      return db.ready;
+    },
+
+    on(fn) { listeners.push(fn); return () => { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); }; },
+    _emit(ns, source) { listeners.slice().forEach((f) => { try { f(ns, source); } catch (e) { console.error(e); } }); },
+    _persist(ns) { return Promise.resolve(db.adapter && db.adapter.save({ [K(ns)]: db.cache[ns] })).catch((e) => console.error('[PasteBoard] storage write failed', ns, e)); },
+    _commit(ns, id, op) {
+      const p = db._persist(ns);
+      db._emit(ns, 'local');
+      return p;
+    },
+
+    get(ns) { return db.cache[ns]; },
+    set(ns, val) { db.cache[ns] = val; return db._commit(ns, null, 'replace'); },
+    patch(ns, patch) { db.cache[ns] = Object.assign({}, db.cache[ns], patch); return db._commit(ns, null, 'patch'); },
+
+    find(ns, id) { return db.cache[ns].find((r) => r.id === id) || null; },
+    upsert(ns, rec) {
+      const arr = db.cache[ns], now = Date.now();
+      const i = rec.id ? arr.findIndex((r) => r.id === rec.id) : -1;
+      let out;
+      if (i < 0) { out = Object.assign({ id: U.uid(ns.slice(0, 3)), createdAt: now }, rec, { updatedAt: now, rev: 1 }); arr.push(out); }
+      else { out = Object.assign({}, arr[i], rec, { updatedAt: now, rev: (arr[i].rev || 0) + 1 }); arr[i] = out; }
+      db._commit(ns, out.id, 'put');
+      return out;
+    },
+    remove(ns, id) {
+      const arr = db.cache[ns], i = arr.findIndex((r) => r.id === id);
+      if (i < 0) return false;
+      arr.splice(i, 1);
+      db._commit(ns, id, 'delete');
+      return true;
+    },
+
+    exportAll() {
+      const data = {}; NAMESPACES.forEach((ns) => { if (ns !== 'outbox' && ns !== 'account') data[ns] = db.cache[ns]; });
+      return { app: 'pasteboard', schemaVersion: PD.SCHEMA_VERSION, exportedAt: new Date().toISOString(), data };
+    },
+    async importAll(obj) {
+      if (!obj || obj.app !== 'pasteboard' || !obj.data) throw new Error('Not a PasteBoard export file');
+      for (const ns of NAMESPACES) { if (ns !== 'outbox' && ns !== 'account' && obj.data[ns] !== undefined) { db.cache[ns] = obj.data[ns]; await db._persist(ns); } }
+      NAMESPACES.forEach((ns) => db._emit(ns, 'local'));
+    },
+    async resetAll() {
+      const keys = NAMESPACES.map(K);
+      await db.adapter.remove(keys);
+      db.cache = DEFAULTS();
+      await PD.seed();
+      NAMESPACES.forEach((ns) => db._emit(ns, 'local'));
+    },
+  });
+
+  /* Large payloads (file shelf, clipboard images) live outside the namespaces as `pdb:<id>`
+     so content scripts never load megabytes of data on every page. */
+  PD.blobs = {
+    async put(id, dataUrl) { await db.adapter.save({ ['pdb:' + id]: dataUrl }); },
+    async get(id) { const r = await db.adapter.load(['pdb:' + id]); return r['pdb:' + id] || null; },
+    async del(id) { await db.adapter.remove(['pdb:' + id]); },
+  };
+
+  /* ---------------- seed ----------------
+     A fresh install (and so a fresh account) starts genuinely empty — no sample desk, snippets or task.
+     One empty desk is created because the rest of the app assumes at least one exists (see PD.desks.remove's
+     "keep at least one desk" guard); everything else starts blank until the person adds their own. */
+  PD.seed = async function (opts) {
+    opts = opts || {};
+    const now = Date.now();
+    const meta = (r) => Object.assign({ createdAt: now, updatedAt: now, rev: 1 }, r);
+    const homeDeskId = 'desk_' + U.uid().slice(3);
+
+    db.cache.desks = [ meta({ id: homeDeskId, name: 'My Desk', urlPatterns: [], shared: false }) ];
+    db.cache.snippets = [];
+    db.cache.sessions = [];
+    db.cache.blueprints = [];
+    db.cache.files = [];
+    db.cache.history = [];
+    db.cache.leads = [];
+    db.cache.tasks = [];
+    db.cache.company = { name: '', logoId: null, address: '', mapsLink: '', whatsapp: '', email: '' };
+    db.cache.team = {
+      meId: 'usr_me',
+      /* Only the owner is seeded. Everyone else joins through a device/user request that the owner approves
+         (see PD.team.request / approve) — there is no sample team on a production install. */
+      members: [ meta({ id: 'usr_me', name: 'You', email: '', role: 'owner', status: 'active', analyticsAccess: true }) ],
+    };
+    db.cache.settings = {
+      activeDeskId: homeDeskId, activeSessionId: null, manualPin: false, autoDetect: true,
+      clipboardHistory: true, ignoreHosts: [], notifications: true, floatingPill: true, textExpansion: true,
+      defaultExpiry: '1h', plan: PD.CONFIG.defaultPlan, siteUrl: PD.CONFIG.siteUrl, flags: {},
+      standardFields: PD.STANDARD_DEFAULTS.slice(),
+    };
+    db.cache.analytics = { days: {} };
+    db.cache.devices = [];
+    db.cache.account = null;
+    db.cache.outbox = [];
+    db.cache.meta = { schemaVersion: PD.SCHEMA_VERSION, seededAt: now, installedAt: now, deviceId: U.uid('dev') };
+    for (const ns of NAMESPACES) await db._persist(ns);
+  };
+
+})(typeof globalThis !== 'undefined' ? globalThis : self);
